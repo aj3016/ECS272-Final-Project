@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import StreamGraph from "./components/StreamGraph";
 
 export default function StreamEntry() {
   const navigate = useNavigate();
@@ -7,20 +8,42 @@ export default function StreamEntry() {
     <div
       style={{
         height: "100vh",
-        display: "grid",
-        placeItems: "center",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <button
-        onClick={() => navigate("/globe")}
+      {/* Stream graph area */}
+      <div
         style={{
-          padding: "14px 28px",
-          fontSize: "16px",
-          cursor: "pointer",
+          flex: 1,
+          display: "grid",
+          placeItems: "center",
+          paddingTop: "24px",
         }}
       >
-        Continue
-      </button>
+        <StreamGraph />
+      </div>
+
+      {/* Small, static continue button */}
+      <div
+        style={{
+          padding: "12px 16px",
+          display: "flex",
+          justifyContent: "flex-end",
+        }}
+      >
+        <button
+          onClick={() => navigate("/globe")}
+          style={{
+            padding: "6px 12px",
+            fontSize: "12px",
+            cursor: "pointer",
+            opacity: 0.85,
+          }}
+        >
+          Continue →
+        </button>
+      </div>
     </div>
   );
 }
