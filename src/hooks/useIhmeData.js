@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 const GEOJSON_URL = "/data/countries_geojson.json";
-const JSON_URL = "/data/country_cleaned.json";
+const JSON_URL = "/data/countries.json";
 
 export const ISO_PROP = "ISO3166-1-Alpha-3";
 export const NAME_PROP = "name";
@@ -11,11 +11,20 @@ function safeNum(x) {
   return Number.isFinite(v) ? v : null;
 }
 
+function ensurePath(obj, k1, k2) {
+  obj[k1] ??= Object.create(null);
+  obj[k1][k2] ??= Object.create(null);
+  return obj[k1][k2];
+}
+
 export function useIhmeData() {
   const [countriesGeo, setCountriesGeo] = useState(null);
-  const [valuesByDiseaseYear, setValuesByDiseaseYear] = useState(() =>
-    Object.create(null)
-  );
+
+  const [valuesByMetricDiseaseYear, setValuesByMetricDiseaseYear] = useState(() => ({
+    rate: Object.create(null),
+    number: Object.create(null),
+  }));
+
   const [diseases, setDiseases] = useState([]);
   const [years, setYears] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +43,9 @@ export function useIhmeData() {
 
         const rows = await (await fetch(JSON_URL)).json();
 
-        const vbd = Object.create(null);
+        const vRate = Object.create(null);
+        const vNumber = Object.create(null);
+
         const diseaseSet = new Set();
         const yearSet = new Set();
 
@@ -48,23 +59,30 @@ export function useIhmeData() {
           const disease = (r.cause_name || "").trim();
           if (!disease) continue;
 
-          const val = safeNum(r.val);
-          if (val === null) continue;
-
+          // record disease/year even if one metric missing
           diseaseSet.add(disease);
           yearSet.add(year);
 
-          vbd[disease] ??= Object.create(null);
-          vbd[disease][year] ??= Object.create(null);
-          vbd[disease][year][iso3] = val;
+          const rate = safeNum(r.val_rate);
+          if (rate !== null) {
+            const bucket = ensurePath(vRate, disease, year);
+            bucket[iso3] = rate;
+          }
+
+          const number = safeNum(r.val_number);
+          if (number !== null) {
+            const bucket = ensurePath(vNumber, disease, year);
+            bucket[iso3] = number;
+          }
         }
 
         const dList = Array.from(diseaseSet).sort();
         const yList = Array.from(yearSet).sort((a, b) => a - b);
 
         if (!alive) return;
+
         setCountriesGeo(geo);
-        setValuesByDiseaseYear(vbd);
+        setValuesByMetricDiseaseYear({ rate: vRate, number: vNumber });
         setDiseases(dList);
         setYears(yList);
       } catch (e) {
@@ -92,7 +110,7 @@ export function useIhmeData() {
 
   return {
     countriesGeo,
-    valuesByDiseaseYear,
+    valuesByMetricDiseaseYear,
     diseases,
     years,
     loading,

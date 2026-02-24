@@ -4,22 +4,20 @@ import * as turf from "@turf/turf";
 import { diseaseAccent } from "../utils/color";
 import { computeThresholds } from "../utils/thresholds";
 import { ISO_PROP, NAME_PROP } from "./useIhmeData";
+import { NO_DATA, ZERO, getPalette } from "../utils/palettes";
 
-/**
- * Build a fill-color expression that reads from feature-state instead of properties.
- * We store:
- *   feature-state.value (number)
- *   feature-state.hasValue (boolean)
- */
-function buildFillExpressionFromState(thresholds) {
-  const NO_DATA = "#e5e7eb";
-  const ZERO = "#f3f4f6";
+function buildFillExpressionFromState(thresholds, paletteName) {
+  const palette = getPalette(paletteName);
+  const c1 = palette[1];
+  const c2 = palette[2];
+  const c3 = palette[3];
+  const c4 = palette[4];
 
   const v = ["feature-state", "value"];
   const has = ["==", ["feature-state", "hasValue"], true];
 
   if (!thresholds) {
-    return ["case", ["!", has], NO_DATA, ["==", v, 0], ZERO, "#2563eb"];
+    return ["case", ["!", has], NO_DATA, ["==", v, 0], ZERO, c4];
   }
 
   const [t1, t2, t3, t4] = thresholds;
@@ -30,36 +28,31 @@ function buildFillExpressionFromState(thresholds) {
     ["==", v, 0],
     ZERO,
     ["<", v, t1],
-    "#dbeafe",
+    c1,
     ["<", v, t2],
-    "#93c5fd",
+    c2,
     ["<", v, t3],
-    "#60a5fa",
+    c3,
     ["<", v, t4],
-    "#2563eb",
-    "#1e40af",
+    c4,
+    c4,
   ];
 }
 
-/**
- * Apply values for (disease, year) using setFeatureState.
- * Requires the source to have promoteId set to ISO_PROP so each feature id = ISO3.
- */
-function applyFeatureStates(map, valuesByDiseaseYear, disease, year) {
-  const perYear = valuesByDiseaseYear?.[disease]?.[year] || {};
-
-  // Mark everything as "no value" first is expensive if you do it every time.
-  // Instead, we track previous ISO3s and clear only those.
-  // We'll do that in the hook via prevIsoSetRef.
-  return perYear;
+function getPerYear(valuesByMetricDiseaseYear, metric, disease, year) {
+  const byMetric = valuesByMetricDiseaseYear?.[metric] || {};
+  return byMetric?.[disease]?.[year] || {};
 }
 
 export function useMapboxGlobe({
   mapContainerRef,
   countriesGeo,
-  valuesByDiseaseYear,
+  valuesByMetricDiseaseYear,
   selectedDisease,
   selectedYear,
+  metric,
+  scaleMode,
+  paletteName,
   spinEnabled,
   onHover,
   onLeave,
@@ -67,15 +60,12 @@ export function useMapboxGlobe({
 }) {
   const mapRef = useRef(null);
 
-  // refs for interaction/spin without rerender jitter
   const userInteractingRef = useRef(false);
   const spinEnabledRef = useRef(!!spinEnabled);
   const rafRef = useRef(null);
 
-  // track which iso3s were set last time so we can clear them efficiently
   const prevIsoSetRef = useRef(new Set());
 
-  // keep latest callbacks without re-binding map events
   const onHoverRef = useRef(onHover);
   const onLeaveRef = useRef(onLeave);
   const onCountryClickRef = useRef(onCountryClick);
@@ -96,14 +86,16 @@ export function useMapboxGlobe({
 
   const thresholds = useMemo(() => {
     if (!selectedDisease) return null;
+    const valuesByDiseaseYear = valuesByMetricDiseaseYear?.[metric];
     return computeThresholds(
       valuesByDiseaseYear,
       selectedDisease,
       selectedYear,
+      metric,
+      scaleMode
     );
-  }, [valuesByDiseaseYear, selectedDisease, selectedYear]);
+  }, [valuesByMetricDiseaseYear, metric, selectedDisease, selectedYear, scaleMode]);
 
-  // Init map once
   useEffect(() => {
     let token = import.meta.env.VITE_MAPBOX_TOKEN;
     token = (token || "")
@@ -129,7 +121,7 @@ export function useMapboxGlobe({
 
     map.addControl(
       new mapboxgl.NavigationControl({ visualizePitch: true }),
-      "bottom-right",
+      "bottom-right"
     );
 
     map.on("style.load", () => {
@@ -142,13 +134,11 @@ export function useMapboxGlobe({
       });
     });
 
-    // Make sure interactions are enabled
     map.dragPan.enable();
     map.scrollZoom.enable();
     map.doubleClickZoom.enable();
     map.touchZoomRotate.enable();
 
-    // User interaction gating for spin
     const onDown = () => (userInteractingRef.current = true);
     const onUp = () => (userInteractingRef.current = false);
 
@@ -164,14 +154,12 @@ export function useMapboxGlobe({
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
         map.remove();
       } catch {
-        // ignore
       } finally {
         mapRef.current = null;
       }
     };
   }, [mapContainerRef]);
 
-  // Add source/layers once data is ready
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !countriesGeo || !selectedDisease) return;
@@ -179,15 +167,13 @@ export function useMapboxGlobe({
     const handleLoad = () => {
       if (map.getSource("countries")) return;
 
-      // Use promoteId so feature.id = ISO3
       map.addSource("countries", {
         type: "geojson",
         data: countriesGeo,
         promoteId: ISO_PROP,
       });
 
-      // Apply correct fill expression on creation (prevents initial "all blue")
-      const fillExpr = buildFillExpressionFromState(thresholds);
+      const fillExpr = buildFillExpressionFromState(thresholds, paletteName);
 
       map.addLayer({
         id: "countries-fill",
@@ -209,7 +195,6 @@ export function useMapboxGlobe({
         },
       });
 
-      // Hover tooltip
       map.on("mousemove", "countries-fill", (e) => {
         map.getCanvas().style.cursor = "pointer";
         const f = e.features?.[0];
@@ -231,14 +216,12 @@ export function useMapboxGlobe({
         onLeaveRef.current?.();
       });
 
-      // Click drill-down
       map.on("click", "countries-fill", (e) => {
         const f = e.features?.[0];
         if (!f) return;
 
         userInteractingRef.current = true;
 
-        // zoom to centroid
         try {
           const centroid = turf.centroid(f).geometry.coordinates;
           map.easeTo({ center: centroid, zoom: 3.2, duration: 900 });
@@ -246,38 +229,21 @@ export function useMapboxGlobe({
           console.warn("Could not compute centroid", err);
         }
 
-        // briefly highlight outline
         const clickedIso = (f.properties?.[ISO_PROP] || "").trim();
         if (clickedIso) {
-          map.setFilter("countries-outline", [
-            "==",
-            ["get", ISO_PROP],
-            clickedIso,
-          ]);
-          window.setTimeout(
-            () => map.setFilter("countries-outline", null),
-            900,
-          );
+          map.setFilter("countries-outline", ["==", ["get", ISO_PROP], clickedIso]);
+          window.setTimeout(() => map.setFilter("countries-outline", null), 900);
         }
 
         onCountryClickRef.current?.(f);
       });
 
-      // Apply initial feature-states (fast)
-      updateFeatureStates(
-        map,
-        valuesByDiseaseYear,
-        selectedDisease,
-        selectedYear,
-      );
-
-      // Start smooth spin loop
+      updateFeatureStates(map);
       startSpinLoop(map);
     };
 
     function startSpinLoop(mapInstance) {
       const step = () => {
-        // schedule next frame first
         rafRef.current = requestAnimationFrame(step);
 
         if (!spinEnabledRef.current) return;
@@ -286,37 +252,38 @@ export function useMapboxGlobe({
         const zoom = mapInstance.getZoom();
         if (zoom > 2.5) return;
 
-        // small incremental rotation
         const center = mapInstance.getCenter();
-        center.lng -= 0.03; // smaller per-frame step = smoother
-        mapInstance.setCenter(center); // setCenter is smoother than easeTo spam
+        center.lng -= 0.03;
+        mapInstance.setCenter(center);
       };
 
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(step);
     }
 
-    function updateFeatureStates(mapInstance, vbd, disease, year) {
-      const perYear = applyFeatureStates(mapInstance, vbd, disease, year);
+    function updateFeatureStates(mapInstance) {
+      const perYear = getPerYear(
+        valuesByMetricDiseaseYear,
+        metric,
+        selectedDisease,
+        selectedYear
+      );
 
-      // Clear previous ISO3 states
       for (const iso of prevIsoSetRef.current) {
         mapInstance.setFeatureState(
           { source: "countries", id: iso },
-          { hasValue: false, value: null },
+          { hasValue: false, value: null }
         );
       }
 
-      // Set new ISO3 states
       const nextSet = new Set();
       for (const [iso3, val] of Object.entries(perYear)) {
         nextSet.add(iso3);
         mapInstance.setFeatureState(
           { source: "countries", id: iso3 },
-          { hasValue: true, value: val },
+          { hasValue: true, value: val }
         );
       }
-
       prevIsoSetRef.current = nextSet;
     }
 
@@ -324,60 +291,63 @@ export function useMapboxGlobe({
     else map.once("load", handleLoad);
   }, [
     countriesGeo,
-    valuesByDiseaseYear,
+    valuesByMetricDiseaseYear,
     selectedDisease,
     selectedYear,
+    metric,
     thresholds,
+    paletteName,
   ]);
 
-  // Update style + feature-state on disease/year change (fast, no setData)
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !countriesGeo || !selectedDisease) return;
     const src = map.getSource("countries");
     if (!src) return;
 
-    // Update fill expression for new thresholds
     map.setPaintProperty(
       "countries-fill",
       "fill-color",
-      buildFillExpressionFromState(thresholds),
+      buildFillExpressionFromState(thresholds, paletteName)
     );
 
-    // Update outline accent
     map.setPaintProperty(
       "countries-outline",
       "line-color",
-      diseaseAccent(selectedDisease),
+      diseaseAccent(selectedDisease)
     );
 
-    // Update per-country values via feature-state
-    const perYear =
-      valuesByDiseaseYear?.[selectedDisease]?.[selectedYear] || {};
+    const perYear = getPerYear(
+      valuesByMetricDiseaseYear,
+      metric,
+      selectedDisease,
+      selectedYear
+    );
 
-    // clear old
     for (const iso of prevIsoSetRef.current) {
       map.setFeatureState(
         { source: "countries", id: iso },
-        { hasValue: false, value: null },
+        { hasValue: false, value: null }
       );
     }
-    // set new
+
     const nextSet = new Set();
     for (const [iso3, val] of Object.entries(perYear)) {
       nextSet.add(iso3);
       map.setFeatureState(
         { source: "countries", id: iso3 },
-        { hasValue: true, value: val },
+        { hasValue: true, value: val }
       );
     }
     prevIsoSetRef.current = nextSet;
   }, [
     countriesGeo,
-    valuesByDiseaseYear,
+    valuesByMetricDiseaseYear,
     selectedDisease,
     selectedYear,
+    metric,
     thresholds,
+    paletteName,
   ]);
 
   return { map: mapRef.current, thresholds };

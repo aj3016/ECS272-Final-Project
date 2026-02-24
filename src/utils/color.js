@@ -2,8 +2,9 @@ export const diseaseColors = {
   Measles: "#ef4444",
   Malaria: "#f59e0b",
   Dengue: "#a855f7",
-  "Lower respiratory infections": "#10b981",
-  "HIV/AIDS and sexually transmitted infections": "#ec4899",
+  "Influenza": "#10b981",
+  "HIV/AIDS": "#ec4899",
+  "COVID-19": "#768233",
 };
 
 export function diseaseAccent(disease) {

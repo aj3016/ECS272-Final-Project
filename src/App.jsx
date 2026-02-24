@@ -10,7 +10,7 @@ export default function App() {
 
   const {
     countriesGeo,
-    valuesByDiseaseYear,
+    valuesByMetricDiseaseYear,
     diseases,
     years,
     loading,
@@ -20,15 +20,17 @@ export default function App() {
 
   const [selectedDisease, setSelectedDisease] = useState(null);
   const [selectedYear, setSelectedYear] = useState(2000);
+  const [scaleMode, setScaleMode] = useState("global"); 
+  const [paletteName, setPaletteName] = useState("blue"); 
+
+  const [metric, setMetric] = useState("rate");
 
   const [spinEnabled, setSpinEnabled] = useState(true);
 
-  // play state
   const [playing, setPlaying] = useState(false);
   const [speedMs, setSpeedMs] = useState(700);
   const playTimerRef = useRef(null);
 
-  // tooltip state
   const [tooltip, setTooltip] = useState({
     visible: false,
     x: 0,
@@ -37,11 +39,9 @@ export default function App() {
     feature: null,
   });
 
-  // detail state
   const [detailOpen, setDetailOpen] = useState(false);
   const [clickedFeature, setClickedFeature] = useState(null);
 
-  // apply defaults when loaded
   useEffect(() => {
     if (!defaults.defaultDisease) return;
     setSelectedDisease((prev) => prev ?? defaults.defaultDisease);
@@ -51,14 +51,16 @@ export default function App() {
   const { thresholds } = useMapboxGlobe({
     mapContainerRef,
     countriesGeo,
-    valuesByDiseaseYear,
+    valuesByMetricDiseaseYear,
     selectedDisease,
     selectedYear,
+    metric,
+    scaleMode,
+    paletteName,
     spinEnabled,
     onHover: ({ feature, point, value }) => {
       setTooltip({ visible: true, x: point.x, y: point.y, feature, value });
     },
-
     onLeave: () => setTooltip((t) => ({ ...t, visible: false })),
     onCountryClick: (feature) => {
       setClickedFeature(feature);
@@ -66,7 +68,6 @@ export default function App() {
     },
   });
 
-  // Play/pause logic
   const stopPlay = () => {
     setPlaying(false);
     if (playTimerRef.current) clearInterval(playTimerRef.current);
@@ -92,14 +93,10 @@ export default function App() {
 
   useEffect(() => {
     if (!playing) return;
-    // restart timer if speed changes while playing
     stopPlay();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     startPlay();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speedMs]);
 
-  // cleanup on unmount
   useEffect(() => stopPlay, []);
 
   const onTogglePlay = () => {
@@ -109,7 +106,7 @@ export default function App() {
 
   const ready = useMemo(
     () => !loading && !error && selectedDisease && years.length > 0,
-    [loading, error, selectedDisease, years.length],
+    [loading, error, selectedDisease, years.length]
   );
 
   return (
@@ -142,6 +139,12 @@ export default function App() {
           spinEnabled={spinEnabled}
           onSpinToggle={(v) => setSpinEnabled(v)}
           thresholds={thresholds}
+          metric={metric}
+          onMetricChange={(m) => setMetric(m)}
+          scaleMode={scaleMode}
+          onScaleModeChange={(s) => setScaleMode(s)}
+          paletteName={paletteName}
+          onPaletteChange={(p) => setPaletteName(p)}
         />
       )}
 
@@ -153,6 +156,7 @@ export default function App() {
         disease={selectedDisease || ""}
         year={selectedYear}
         value={tooltip.value}
+        metric={metric}
       />
 
       <DetailPanel
@@ -161,7 +165,8 @@ export default function App() {
         selectedDisease={selectedDisease || ""}
         selectedYear={selectedYear}
         years={years}
-        valuesByDiseaseYear={valuesByDiseaseYear}
+        valuesByMetricDiseaseYear={valuesByMetricDiseaseYear}
+        metric={metric}
         onClose={() => setDetailOpen(false)}
       />
 
@@ -171,7 +176,7 @@ export default function App() {
           <div className="small">Loading data…</div>
           <div className="small">
             Expecting: <b>/public/data/countries_geojson.json</b> and{" "}
-            <b>/public/data/country_cleaned.json</b>
+            <b>/public/data/countries.json</b>
           </div>
         </div>
       ) : null}

@@ -1,47 +1,43 @@
-export function computeThresholds(valuesByDiseaseYear, disease, year) {
+export function computeThresholds(
+  valuesByDiseaseYear,
+  disease,
+  year,
+  metric = "rate",
+  scaleMode = "year"
+) {
   const d = valuesByDiseaseYear?.[disease];
-  if (!d || !d[year]) return null;
+  if (!d) return null;
 
-  const vals = Object.values(d[year]).filter(
-    (v) => Number.isFinite(v) && v > 0
-  );
-  if (vals.length < 10) return null;
+  let raw = [];
 
-  vals.sort((a, b) => a - b);
-  const q = (p) => vals[Math.floor((vals.length - 1) * p)];
-  return [q(0.2), q(0.4), q(0.6), q(0.8)];
-}
-
-export function buildFillExpression(thresholds) {
-  const NO_DATA = "#e5e7eb";
-  const ZERO = "#f3f4f6";
-
-  if (!thresholds) {
-    return [
-      "case",
-      ["!", ["has", "value"]],
-      NO_DATA,
-      ["==", ["get", "value"], 0],
-      ZERO,
-      "#2563eb",
-    ];
+  if (scaleMode === "global") {
+    for (const yKey of Object.keys(d)) {
+      const perYear = d[yKey];
+      if (!perYear) continue;
+      for (const v of Object.values(perYear)) {
+        if (Number.isFinite(v) && v > 0) raw.push(v);
+      }
+    }
+  } else {
+    const perYear = d?.[year];
+    if (!perYear) return null;
+    raw = Object.values(perYear).filter((v) => Number.isFinite(v) && v > 0);
   }
 
-  const [t1, t2, t3, t4] = thresholds;
-  return [
-    "case",
-    ["!", ["has", "value"]],
-    NO_DATA,
-    ["==", ["get", "value"], 0],
-    ZERO,
-    ["<", ["get", "value"], t1],
-    "#dbeafe",
-    ["<", ["get", "value"], t2],
-    "#93c5fd",
-    ["<", ["get", "value"], t3],
-    "#60a5fa",
-    ["<", ["get", "value"], t4],
-    "#2563eb",
-    "#1e40af",
-  ];
+  if (raw.length < 10) return null;
+
+  function quantiles(sortedVals) {
+    const n = sortedVals.length;
+    const q = (p) => sortedVals[Math.floor((n - 1) * p)];
+    return [q(0.2), q(0.4), q(0.6), q(0.8)];
+  }
+
+  if (metric === "number") {
+    const logs = raw.map((v) => Math.log1p(v)).sort((a, b) => a - b);
+    const [lt1, lt2, lt3, lt4] = quantiles(logs);
+    return [Math.expm1(lt1), Math.expm1(lt2), Math.expm1(lt3), Math.expm1(lt4)];
+  }
+
+  raw.sort((a, b) => a - b);
+  return quantiles(raw);
 }

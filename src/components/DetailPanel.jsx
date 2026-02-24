@@ -3,8 +3,9 @@ import { diseaseAccent } from "../utils/color";
 import { buildSparkPath } from "../utils/sparkline";
 import { featureToCountryMeta } from "../hooks/useMapboxGlobe";
 
-function getSeries(valuesByDiseaseYear, years, iso3, disease) {
-  const d = valuesByDiseaseYear?.[disease];
+function getSeries(valuesByMetricDiseaseYear, metric, years, iso3, disease) {
+  const byMetric = valuesByMetricDiseaseYear?.[metric];
+  const d = byMetric?.[disease];
   if (!d) return [];
   return years.map((y) => {
     const v = d[y]?.[iso3];
@@ -12,7 +13,18 @@ function getSeries(valuesByDiseaseYear, years, iso3, disease) {
   });
 }
 
-function Sparkline({ series, selectedYear, accent }) {
+function formatYAxisLabel(v, metric) {
+  if (!Number.isFinite(v)) return "";
+  if (metric === "number") {
+    if (v >= 1e9) return `${(v / 1e9).toFixed(2)}B`;
+    if (v >= 1e6) return `${(v / 1e6).toFixed(2)}M`;
+    if (v >= 1e3) return `${(v / 1e3).toFixed(2)}K`;
+    return `${Math.round(v)}`;
+  }
+  return v.toFixed(2);
+}
+
+function Sparkline({ series, selectedYear, accent, metric }) {
   const w = 340;
   const h = 150;
   const pad = 18;
@@ -21,7 +33,11 @@ function Sparkline({ series, selectedYear, accent }) {
   const ys = series.map((d) => d.value).filter((v) => v !== null);
 
   if (ys.length < 2) {
-    return <div style={{ fontSize: 12, color: "#666" }}>Not enough data to plot.</div>;
+    return (
+      <div style={{ fontSize: 12, color: "#666" }}>
+        Not enough data to plot.
+      </div>
+    );
   }
 
   const xMin = Math.min(...xs);
@@ -29,8 +45,11 @@ function Sparkline({ series, selectedYear, accent }) {
   const yMin = Math.min(...ys);
   const yMax = Math.max(...ys);
 
-  const xScale = (x) => pad + (w - 2 * pad) * ((x - xMin) / (xMax - xMin || 1));
-  const yScale = (y) => h - pad - (h - 2 * pad) * ((y - yMin) / (yMax - yMin || 1));
+  const xScale = (x) =>
+    pad + (w - 2 * pad) * ((x - xMin) / (xMax - xMin || 1));
+
+  const yScale = (y) =>
+    h - pad - (h - 2 * pad) * ((y - yMin) / (yMax - yMin || 1));
 
   const path = buildSparkPath(series, xScale, yScale);
 
@@ -41,7 +60,12 @@ function Sparkline({ series, selectedYear, accent }) {
     <svg width={w} height={h} style={{ display: "block" }}>
       <path d={path} fill="none" stroke={accent} strokeWidth="2" />
       {selHas ? (
-        <circle cx={xScale(sel.year)} cy={yScale(sel.value)} r="3.5" fill={accent} />
+        <circle
+          cx={xScale(sel.year)}
+          cy={yScale(sel.value)}
+          r="3.5"
+          fill={accent}
+        />
       ) : null}
 
       <text x={pad} y={h - 6} fontSize="10" fill="#666">
@@ -51,10 +75,10 @@ function Sparkline({ series, selectedYear, accent }) {
         {xMax}
       </text>
       <text x={pad} y={pad - 6} fontSize="10" fill="#666">
-        {yMax.toFixed(2)}
+        {formatYAxisLabel(yMax, metric)}
       </text>
       <text x={pad} y={h - pad + 12} fontSize="10" fill="#666">
-        {yMin.toFixed(2)}
+        {formatYAxisLabel(yMin, metric)}
       </text>
     </svg>
   );
@@ -66,7 +90,8 @@ export default function DetailPanel({
   selectedDisease,
   selectedYear,
   years,
-  valuesByDiseaseYear,
+  valuesByMetricDiseaseYear,
+  metric,
   onClose,
 }) {
   const meta = useMemo(() => featureToCountryMeta(feature), [feature]);
@@ -74,8 +99,14 @@ export default function DetailPanel({
 
   const series = useMemo(() => {
     if (!meta.iso3) return [];
-    return getSeries(valuesByDiseaseYear, years, meta.iso3, selectedDisease);
-  }, [valuesByDiseaseYear, years, meta.iso3, selectedDisease]);
+    return getSeries(
+      valuesByMetricDiseaseYear,
+      metric,
+      years,
+      meta.iso3,
+      selectedDisease
+    );
+  }, [valuesByMetricDiseaseYear, metric, years, meta.iso3, selectedDisease]);
 
   if (!open || !feature || !meta.iso3) return null;
 
@@ -94,15 +125,24 @@ export default function DetailPanel({
       </div>
 
       <div style={{ marginTop: 10, fontSize: 12, color: "#333" }}>
-        Disease: <b>{selectedDisease}</b> (accent color)
+        Disease: <b>{selectedDisease}</b>
+      </div>
+
+      <div style={{ marginTop: 6, fontSize: 12, color: "#333" }}>
+        Metric: <b>{metric === "number" ? "Number" : "Rate"}</b>
       </div>
 
       <div style={{ marginTop: 10 }}>
-        <Sparkline series={series} selectedYear={selectedYear} accent={accent} />
+        <Sparkline
+          series={series}
+          selectedYear={selectedYear}
+          accent={accent}
+          metric={metric}
+        />
       </div>
 
       <div className="small" style={{ marginTop: 8 }}>
-        Tip: change disease/year and the drill-down updates automatically.
+        Tip: change disease/year/metric and the drill-down updates automatically.
       </div>
     </div>
   );

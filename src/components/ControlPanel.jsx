@@ -1,14 +1,33 @@
 import React from "react";
+import { getPalette } from "../utils/palettes";
 
-function Legend({ thresholds }) {
-  const colors = ["#f3f4f6", "#dbeafe", "#93c5fd", "#60a5fa", "#2563eb"];
+function formatLegendNumber(x, metric) {
+  if (!Number.isFinite(x)) return "";
+  if (metric === "number") {
+    if (x >= 1e9) return `${(x / 1e9).toFixed(2)}B`;
+    if (x >= 1e6) return `${(x / 1e6).toFixed(2)}M`;
+    if (x >= 1e3) return `${(x / 1e3).toFixed(2)}K`;
+    return `${Math.round(x)}`;
+  }
+  return x.toFixed(2);
+}
+
+function Legend({ thresholds, metric, paletteName }) {
+  const colors = getPalette(paletteName);
+
   const labels = thresholds
     ? [
         "0 (no burden)",
-        `< ${thresholds[0].toFixed(2)}`,
-        `${thresholds[0].toFixed(2)} – ${thresholds[1].toFixed(2)}`,
-        `${thresholds[1].toFixed(2)} – ${thresholds[2].toFixed(2)}`,
-        `≥ ${thresholds[2].toFixed(2)}`,
+        `< ${formatLegendNumber(thresholds[0], metric)}`,
+        `${formatLegendNumber(thresholds[0], metric)} – ${formatLegendNumber(
+          thresholds[1],
+          metric
+        )}`,
+        `${formatLegendNumber(thresholds[1], metric)} – ${formatLegendNumber(
+          thresholds[2],
+          metric
+        )}`,
+        `≥ ${formatLegendNumber(thresholds[2], metric)}`,
       ]
     : ["0 (no burden)", "low", "mid", "high", "very high"];
 
@@ -42,6 +61,12 @@ export default function ControlPanel({
   spinEnabled,
   onSpinToggle,
   thresholds,
+  metric,
+  onMetricChange,
+  scaleMode,
+  onScaleModeChange,
+  paletteName,
+  onPaletteChange,
 }) {
   const minY = years?.[0] ?? 1970;
   const maxY = years?.[years.length - 1] ?? 2024;
@@ -68,6 +93,36 @@ export default function ControlPanel({
       </div>
 
       <div className="row">
+        <label>Metric</label>
+        <select value={metric} onChange={(e) => onMetricChange(e.target.value)}>
+          <option value="rate">Rate</option>
+          <option value="number">Number</option>
+        </select>
+      </div>
+      {scaleMode && onScaleModeChange ? (
+        <div className="row">
+          <label>Scale</label>
+          <select
+            value={scaleMode}
+            onChange={(e) => onScaleModeChange(e.target.value)}
+          >
+            <option value="global">Global (static)</option>
+            <option value="year">Per-year (dynamic)</option>
+          </select>
+        </div>
+      ) : null}
+
+      <div className="row">
+        <label>Shades</label>
+        <select value={paletteName} onChange={(e) => onPaletteChange(e.target.value)}>
+          <option value="blue">Blue</option>
+          <option value="red">Red</option>
+          <option value="purple">Purple</option>
+          <option value="green">Green</option>
+        </select>
+      </div>
+
+      <div className="row">
         <label>Year</label>
         <input
           type="range"
@@ -90,7 +145,10 @@ export default function ControlPanel({
 
       <div className="row">
         <label>Speed</label>
-        <select value={String(speedMs)} onChange={(e) => onSpeedChange(Number(e.target.value))}>
+        <select
+          value={String(speedMs)}
+          onChange={(e) => onSpeedChange(Number(e.target.value))}
+        >
           <option value="1200">Slow</option>
           <option value="700">Normal</option>
           <option value="350">Fast</option>
@@ -106,7 +164,7 @@ export default function ControlPanel({
         />
       </div>
 
-      <Legend thresholds={thresholds} />
+      <Legend thresholds={thresholds} metric={metric} paletteName={paletteName} />
     </div>
   );
 }
