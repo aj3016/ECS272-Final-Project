@@ -1,7 +1,11 @@
 import { useEffect, useRef } from "react";
 import * as d3 from "d3";
 
-export default function StreamGraph() {
+export default function StreamGraph({
+  diseases = null,          // array of disease names or null = all
+  yScale = "symlog",        // "symlog" | "linear"
+  title = null,             // optional title
+}) {
   const svgRef = useRef();
 
   useEffect(() => {
@@ -28,13 +32,18 @@ export default function StreamGraph() {
       /* -------------------------------------------------
          2. Group by disease, sort by year
       ------------------------------------------------- */
-      const series = Array.from(
+      let series = Array.from(
         d3.group(data, (d) => d.disease),
         ([disease, values]) => ({
           disease,
           values: values.slice().sort((a, b) => a.year - b.year),
         })
       );
+
+      // Optional disease filtering
+      if (diseases) {
+        series = series.filter((s) => diseases.includes(s.disease));
+      }
 
       /* -------------------------------------------------
          3. Sort draw order (large first → small on top)
@@ -45,20 +54,22 @@ export default function StreamGraph() {
       series.sort((a, b) => b.maxVal - a.maxVal);
 
       /* -------------------------------------------------
-         4. Scales (symlog for readability)
+         4. Scales
       ------------------------------------------------- */
       const x = d3
         .scaleLinear()
-        .domain(d3.extent(data, (d) => d.year))
+        .domain([1980, 2023])
         .range([margin.left, width - margin.right]);
 
-      const maxVal = d3.max(data, (d) => d.val) ?? 1;
+      const maxVal =
+        d3.max(series.flatMap((s) => s.values), (d) => d.val) ?? 1;
 
-      const y = d3
-        .scaleSymlog()
-        .constant(5000)
-        .domain([0, maxVal])
-        .range([height - margin.bottom, margin.top]);
+      const y =
+        yScale === "linear"
+          ? d3.scaleLinear().domain([0, maxVal])
+          : d3.scaleSymlog().constant(5000).domain([0, maxVal]);
+
+      y.range([height - margin.bottom, margin.top]);
 
       const color = d3
         .scaleOrdinal()
@@ -84,7 +95,20 @@ export default function StreamGraph() {
       svg.selectAll("*").remove();
 
       /* -------------------------------------------------
-         6. Draw filled areas (visual + hit-testable)
+         6. Optional title
+      ------------------------------------------------- */
+      if (title) {
+        svg
+          .append("text")
+          .attr("x", margin.left)
+          .attr("y", 18)
+          .attr("font-size", 13)
+          .attr("font-weight", 600)
+          .text(title);
+      }
+
+      /* -------------------------------------------------
+         7. Draw filled areas
       ------------------------------------------------- */
       svg
         .append("g")
@@ -99,7 +123,7 @@ export default function StreamGraph() {
         .attr("stroke-width", 0.5);
 
       /* -------------------------------------------------
-         7. Axes
+         8. Axes
       ------------------------------------------------- */
       svg
         .append("g")
@@ -107,13 +131,20 @@ export default function StreamGraph() {
         .call(d3.axisBottom(x).tickFormat(d3.format("d")));
 
       svg
-        .append("g")
-        .attr("transform", `translate(${margin.left},0)`)
-        .call(
-          d3.axisLeft(y)
-            .tickValues([0, 1e3, 5e3, 1e4, 5e4, 1e5, 5e5, 1e6, 5e6, 1e7])
-            .tickFormat(d3.format(".2s"))
-        );
+      .append("g")
+      .attr("transform", `translate(${margin.left},0)`)
+      .call(
+        d3.axisLeft(y)
+          .tickValues(
+            yScale === "linear"
+              ? undefined
+              : [0, 1e3, 5e3, 1e4, 5e4, 1e5, 5e5, 1e6, 5e6, 1e7]
+          )
+          .tickFormat(d3.format(".2s"))
+          .tickSizeOuter(0)     // ⬅️ removes floating outer ticks
+          .tickPadding(8)       // ⬅️ better spacing between tick + label
+      )
+      .call((g) => g.select(".domain").attr("stroke-width", 1.2));
 
       svg
         .append("text")
@@ -125,7 +156,7 @@ export default function StreamGraph() {
         .text("Number of deaths");
 
       /* -------------------------------------------------
-         8. Tooltip logic — TOPMOST visible area
+         9. Tooltip (topmost visible area)
       ------------------------------------------------- */
       const tooltip = d3.select("#stream-tooltip");
 
@@ -161,7 +192,7 @@ export default function StreamGraph() {
           tooltip.style("opacity", 0);
         });
     });
-  }, []);
+  }, [diseases, yScale, title]);
 
   return (
     <div style={{ position: "relative", width: 900 }}>
