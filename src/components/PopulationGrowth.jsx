@@ -38,74 +38,65 @@ export default function PopulationGrowth() {
     d3.csv("/data/pop-growth-rate.csv")
       .then((raw) => {
         if (!raw || raw.length === 0) {
-          showError("CSV did not load. Check file path: public/data/pop-growth-rate.csv");
+          showError("CSV did not load. Check file path.");
           return;
         }
 
-        // Find the "Country Name" column even if it's slightly different
         const countryCol =
           Object.keys(raw[0]).find((k) => k.trim() === "Country Name") ||
-          Object.keys(raw[0]).find((k) => k.toLowerCase().includes("country") && k.toLowerCase().includes("name"));
+          Object.keys(raw[0]).find(
+            (k) =>
+              k.toLowerCase().includes("country") &&
+              k.toLowerCase().includes("name")
+          );
 
         if (!countryCol) {
-          showError(`Couldn't find "Country Name" column. Found columns: ${Object.keys(raw[0]).slice(0, 6).join(", ")} ...`);
+          showError("Couldn't find Country Name column.");
           return;
         }
 
-        // Find World row robustly (trim + case-insensitive)
         const worldRow = raw.find(
-          (d) => String(d[countryCol] ?? "").trim().toLowerCase() === "world"
+          (d) =>
+            String(d[countryCol] ?? "").trim().toLowerCase() === "world"
         );
 
         if (!worldRow) {
-          const examples = raw
-            .slice(0, 8)
-            .map((d) => String(d[countryCol] ?? "").trim())
-            .join(" | ");
-          showError(`No row where ${countryCol} == "World". First few names: ${examples}`);
+          showError("World row not found.");
           return;
         }
 
-        // Extract year columns: accept "1960" or "1960 [YR1960]" etc.
-        const yearKeys = Object.keys(worldRow).filter((k) => {
-          const m = k.match(/\b(19|20)\d{2}\b/);
-          return !!m;
-        });
-
-        if (yearKeys.length === 0) {
-          showError(`No year columns detected. Check header format.`);
-          return;
-        }
+        const yearKeys = Object.keys(worldRow).filter((k) =>
+          /\b(19|20)\d{2}\b/.test(k)
+        );
 
         const data = yearKeys
           .map((k) => {
-            const m = k.match(/\b(19|20)\d{2}\b/);
-            const year = m ? +m[0] : NaN;
-
-            // some cells are "" -> NaN
+            const yearMatch = k.match(/\b(19|20)\d{2}\b/);
+            const year = yearMatch ? +yearMatch[0] : NaN;
             const value = +String(worldRow[k] ?? "").trim();
-
             return { year, value };
           })
           .filter(
-                (d) =>
-                Number.isFinite(d.year) &&
-                Number.isFinite(d.value) &&
-                d.year >= 1980 &&
-                d.year <= 2023
-            )
+            (d) =>
+              Number.isFinite(d.year) &&
+              Number.isFinite(d.value) &&
+              d.year >= 1980 &&
+              d.year <= 2023
+          )
           .sort((a, b) => a.year - b.year);
 
         if (data.length < 2) {
-          showError(`Parsed too few points (${data.length}). Likely many empty cells for World.`);
+          showError("Too few data points.");
           return;
         }
 
-        // --- scales ---
+        // -----------------------------
+        // Scales
+        // -----------------------------
         const x = d3
-        .scaleLinear()
-        .domain([1980, 2023])
-        .range([margin.left, width - margin.right]);
+          .scaleLinear()
+          .domain([1980, 2023])
+          .range([margin.left, width - margin.right]);
 
         const y = d3
           .scaleLinear()
@@ -119,8 +110,10 @@ export default function PopulationGrowth() {
           .y((d) => y(d.value))
           .curve(d3.curveMonotoneX);
 
-        // --- draw ---
-        svg
+        // -----------------------------
+        // Draw animated line
+        // -----------------------------
+        const path = svg
           .append("path")
           .datum(data)
           .attr("fill", "none")
@@ -128,23 +121,58 @@ export default function PopulationGrowth() {
           .attr("stroke-width", 2)
           .attr("d", line);
 
-        svg
+        const totalLength = path.node().getTotalLength();
+
+        path
+          .attr("stroke-dasharray", totalLength)
+          .attr("stroke-dashoffset", totalLength)
+          .transition()
+          .duration(1800)
+          .ease(d3.easeCubicOut)
+          .attr("stroke-dashoffset", 0);
+
+        // -----------------------------
+        // Axes (fade in slightly after)
+        // -----------------------------
+        const xAxis = svg
           .append("g")
           .attr("transform", `translate(0,${height - margin.bottom})`)
+          .attr("opacity", 0)
           .call(d3.axisBottom(x).tickFormat(d3.format("d")));
 
-        svg
+        const yAxis = svg
           .append("g")
           .attr("transform", `translate(${margin.left},0)`)
+          .attr("opacity", 0)
           .call(d3.axisLeft(y).ticks(4).tickFormat((d) => `${d}%`));
 
+        xAxis
+          .transition()
+          .delay(1400)
+          .duration(600)
+          .attr("opacity", 1);
+
+        yAxis
+          .transition()
+          .delay(1400)
+          .duration(600)
+          .attr("opacity", 1);
+
+        // -----------------------------
+        // Title (fade in)
+        // -----------------------------
         svg
           .append("text")
           .attr("x", margin.left)
           .attr("y", 12)
           .attr("font-size", 12)
           .attr("font-weight", 600)
-          .text("Global population growth rate (%)");
+          .attr("opacity", 0)
+          .text("Global population growth rate (%)")
+          .transition()
+          .delay(1500)
+          .duration(600)
+          .attr("opacity", 1);
       })
       .catch((err) => {
         showError(`Failed to load CSV: ${String(err)}`);
