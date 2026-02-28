@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import * as d3 from "d3";
 
 export default function StreamGraph({
+  onDiseaseSelect = null,
   diseases = null,
   yScale = "symlog",
   title = null,
@@ -72,7 +73,6 @@ export default function StreamGraph({
         .y1((d) => y(d.val))
         .curve(d3.curveMonotoneX);
 
-      // --- flat version for animation start ---
       const areaFlat = d3
         .area()
         .x((d) => x(d.year))
@@ -88,9 +88,7 @@ export default function StreamGraph({
 
       svg.selectAll("*").remove();
 
-      // -----------------------------
-      // Title (fade in)
-      // -----------------------------
+      // Title
       if (title) {
         svg
           .append("text")
@@ -107,7 +105,7 @@ export default function StreamGraph({
       }
 
       // -----------------------------
-      // Draw areas (start flat)
+      // Draw clickable areas
       // -----------------------------
       const areas = svg
         .append("g")
@@ -119,7 +117,23 @@ export default function StreamGraph({
         .attr("d", (d) => areaFlat(d.values))
         .attr("opacity", 0.55)
         .attr("stroke", "#111")
-        .attr("stroke-width", 0.5);
+        .attr("stroke-width", 0.5)
+        .style("cursor", "pointer")
+        .on("click", function (event, d) {
+          if (onDiseaseSelect) {
+            onDiseaseSelect(d.disease);
+          }
+        })
+        .on("mouseover", function () {
+          d3.select(this)
+            .attr("opacity", 0.85)
+            .attr("stroke-width", 1.5);
+        })
+        .on("mouseout", function () {
+          d3.select(this)
+            .attr("opacity", 0.55)
+            .attr("stroke-width", 0.5);
+        });
 
       // Animate rise
       areas
@@ -129,9 +143,7 @@ export default function StreamGraph({
         .ease(d3.easeCubicOut)
         .attr("d", (d) => area(d.values));
 
-      // -----------------------------
-      // Axes (fade in after animation)
-      // -----------------------------
+      // Axes
       const xAxis = svg
         .append("g")
         .attr("transform", `translate(0,${height - margin.bottom})`)
@@ -155,17 +167,8 @@ export default function StreamGraph({
         )
         .call((g) => g.select(".domain").attr("stroke-width", 1.2));
 
-      xAxis
-        .transition()
-        .delay(1500)
-        .duration(600)
-        .attr("opacity", 1);
-
-      yAxis
-        .transition()
-        .delay(1500)
-        .duration(600)
-        .attr("opacity", 1);
+      xAxis.transition().delay(1500).duration(600).attr("opacity", 1);
+      yAxis.transition().delay(1500).duration(600).attr("opacity", 1);
 
       svg
         .append("text")
@@ -181,9 +184,7 @@ export default function StreamGraph({
         .duration(600)
         .attr("opacity", 1);
 
-      // -----------------------------
-      // Tooltip (unchanged)
-      // -----------------------------
+      // Tooltip
       const tooltip = d3.select("#stream-tooltip");
 
       svg
@@ -233,7 +234,7 @@ export default function StreamGraph({
           tooltip.style("opacity", 0);
         });
     });
-  }, [diseases, yScale, title]);
+  }, [diseases, yScale, title, onDiseaseSelect]);
 
   return (
     <div style={{ position: "relative", width: 900 }}>

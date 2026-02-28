@@ -29,7 +29,7 @@ const DISEASE_GROUPS = {
   },
 };
 
-export default function StreamView() {
+export default function StreamView({ onDiseaseSelect }) {
   const [mode, setMode] = useState("all");
 
   const config = DISEASE_GROUPS[mode];
@@ -71,7 +71,8 @@ export default function StreamView() {
       )}
 
       {/* The ONE stream graph */}
-      <StreamGraph
+      <StreamGraph 
+        onDiseaseSelect={onDiseaseSelect}
         diseases={config.diseases}
         yScale={config.scale}
       />

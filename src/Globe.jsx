@@ -1,3 +1,4 @@
+import { useSearchParams } from "react-router-dom";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ControlPanel from "./components/ControlPanel";
 import Tooltip from "./components/Tooltip";
@@ -7,6 +8,9 @@ import { useMapboxGlobe } from "./hooks/useMapboxGlobe";
 
 export default function Globe() {
   const mapContainerRef = useRef(null);
+
+  const [searchParams] = useSearchParams();
+  const urlDisease = searchParams.get("disease");
 
   const {
     countriesGeo,
@@ -18,7 +22,8 @@ export default function Globe() {
     defaults,
   } = useIhmeData();
 
-  const [selectedDisease, setSelectedDisease] = useState(null);
+  // const [selectedDisease, setSelectedDisease] = useState(null);
+  const [selectedDisease, setSelectedDisease] = useState(urlDisease || null);
   const [selectedYear, setSelectedYear] = useState(2000);
 
   const [spinEnabled, setSpinEnabled] = useState(true);
@@ -43,10 +48,14 @@ export default function Globe() {
 
   // apply defaults when loaded
   useEffect(() => {
-    if (!defaults.defaultDisease) return;
-    setSelectedDisease((prev) => prev ?? defaults.defaultDisease);
-    setSelectedYear((prev) => (prev ? prev : defaults.defaultYear));
-  }, [defaults.defaultDisease, defaults.defaultYear]);
+  if (!defaults.defaultDisease) return;
+
+  setSelectedDisease(
+    urlDisease || defaults.defaultDisease
+  );
+
+  setSelectedYear((prev) => (prev ? prev : defaults.defaultYear));
+}, [defaults.defaultDisease, defaults.defaultYear, urlDisease]);
 
   const { thresholds } = useMapboxGlobe({
     mapContainerRef,
@@ -129,11 +138,11 @@ export default function Globe() {
         </div>
       ) : (
         <ControlPanel
-          diseases={diseases}
+          // diseases={diseases}
           years={years}
           selectedDisease={selectedDisease || ""}
           selectedYear={selectedYear}
-          onDiseaseChange={(d) => setSelectedDisease(d)}
+          // onDiseaseChange={(d) => setSelectedDisease(d)}
           onYearChange={(y) => setSelectedYear(y)}
           playing={playing}
           onTogglePlay={onTogglePlay}

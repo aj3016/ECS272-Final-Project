@@ -15,30 +15,11 @@ export default function StreamEntry() {
       }}
     >
       {/* TOP: disease stream graph */}
-      <StreamView />
+      <StreamView onDiseaseSelect={(d) => navigate(`/globe?disease=${encodeURIComponent(d)}`)} />
 
       {/* BOTTOM: population growth rate */}
       <PopulationGrowth />
 
-      {/* Continue button */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          marginTop: 30,
-        }}
-      >
-        <button
-          onClick={() => navigate("/globe")}
-          style={{
-            padding: "10px 22px",
-            fontSize: "14px",
-            cursor: "pointer",
-          }}
-        >
-          Continue
-        </button>
-      </div>
     </div>
   );
 }

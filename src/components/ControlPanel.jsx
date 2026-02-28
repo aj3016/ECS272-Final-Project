@@ -29,11 +29,11 @@ function Legend({ thresholds }) {
 }
 
 export default function ControlPanel({
-  diseases,
+  // diseases,
   years,
   selectedDisease,
   selectedYear,
-  onDiseaseChange,
+  // onDiseaseChange,
   onYearChange,
   playing,
   onTogglePlay,
@@ -53,7 +53,7 @@ export default function ControlPanel({
         Rotate, scrub time, click a country to zoom + see drill-down.
       </div>
 
-      <div className="row">
+      {/* <div className="row">
         <label>Disease</label>
         <select
           value={selectedDisease || ""}
@@ -65,7 +65,14 @@ export default function ControlPanel({
             </option>
           ))}
         </select>
+      </div> */
+      <div className="row">
+        <label>Disease</label>
+        <div style={{ fontWeight: 600 }}>
+          {selectedDisease}
+        </div>
       </div>
+      }
 
       <div className="row">
         <label>Year</label>
