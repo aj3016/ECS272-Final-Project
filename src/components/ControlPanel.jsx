@@ -67,6 +67,7 @@ export default function ControlPanel({
   onScaleModeChange,
   paletteName,
   onPaletteChange,
+  diseaseDisabled = false,
 }) {
   const minY = years?.[0] ?? 1970;
   const maxY = years?.[years.length - 1] ?? 2024;
@@ -82,6 +83,7 @@ export default function ControlPanel({
         <label>Disease</label>
         <select
           value={selectedDisease || ""}
+          disabled={diseaseDisabled}
           onChange={(e) => onDiseaseChange(e.target.value)}
         >
           {diseases.map((d) => (

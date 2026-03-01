@@ -1,87 +1,139 @@
-/* :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-} */
-
+/* ============================
+   Global / Reset
+   ============================ */
 
 @import "mapbox-gl/dist/mapbox-gl.css";
 
 :root {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  color-scheme: light;
+
+  /* Light theme tokens (off-white, calm) */
+  --bg: #f7f6f3;                 /* warm off-white */
+  --bg-2: #f1f5f9;               /* cool off-white */
+  --card: rgba(255, 255, 255, 0.86);
+  --card-strong: rgba(255, 255, 255, 0.94);
+
+  --stroke: rgba(15, 23, 42, 0.10);
+  --stroke-soft: rgba(15, 23, 42, 0.08);
+
+  --text: rgba(15, 23, 42, 0.92);
+  --muted: rgba(15, 23, 42, 0.62);
+
+  --shadow-lg: 0 18px 50px rgba(2, 6, 23, 0.12);
+  --shadow-md: 0 12px 30px rgba(2, 6, 23, 0.10);
+  --shadow-sm: 0 8px 24px rgba(2, 6, 23, 0.08);
+
+  --radius-lg: 16px;
+  --radius-md: 14px;
+  --radius-sm: 12px;
+
+  /* Accent (keep subtle) */
+  --accent: rgba(37, 99, 235, 0.92);
+  --accent-soft: rgba(37, 99, 235, 0.12);
 }
+
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
+  background:
+    radial-gradient(1200px 700px at 20% 0%, rgba(37, 99, 235, 0.06), transparent 55%),
+    radial-gradient(900px 600px at 80% 10%, rgba(16, 185, 129, 0.05), transparent 55%),
+    linear-gradient(180deg, var(--bg), var(--bg-2));
+  color: var(--text);
 }
 
+/* App container */
 #root {
   height: 100vh;
   width: 100vw;
 }
+
+/* ============================
+   Shared controls
+   ============================ */
+
+label,
+.lbl {
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.78);
+  min-width: 70px;
+}
+
+select,
+input[type="range"] {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--stroke);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 6px 8px;
+  outline: none;
+  box-shadow: 0 1px 0 rgba(2, 6, 23, 0.02);
+}
+
+select:focus,
+input[type="range"]:focus {
+  border-color: rgba(37, 99, 235, 0.28);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
+}
+
+button,
+.btn,
+.btnSmall,
+.btnPrimary,
+.helpBtn {
+  border-radius: 10px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  padding: 8px 10px;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(2, 6, 23, 0.02);
+}
+
+button:hover,
+.btn:hover,
+.btnSmall:hover,
+.btnPrimary:hover,
+.helpBtn:hover {
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(37, 99, 235, 0.22);
+}
+
+.btnSmall {
+  width: auto;
+  padding: 6px 10px;
+}
+
+.btnPrimary {
+  border-color: rgba(37, 99, 235, 0.22);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.10), rgba(255,255,255,0.92));
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.12);
+}
+
+/* Small helper text */
+.small,
+.smallText,
+.panelHint,
+.vizSub,
+.detailSub,
+.stepperHint,
+.helpSub,
+.curtainSub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.smallWarn {
+  font-size: 12px;
+  color: rgba(180, 83, 9, 0.95);
+}
+
+/* ============================
+   Globe page (legacy classes)
+   ============================ */
 
 .mapRoot {
   position: relative;
@@ -94,16 +146,19 @@ body {
   inset: 0;
 }
 
+/* legacy panel (globe controls) */
 .panel {
   position: absolute;
   top: 12px;
   left: 12px;
   z-index: 10;
-  background: rgba(255, 255, 255, 0.92);
-  padding: 12px;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   width: 360px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+
+  background: linear-gradient(180deg, var(--card-strong), var(--card));
+  border: 1px solid var(--stroke);
+  box-shadow: var(--shadow-sm);
 }
 
 .row {
@@ -112,41 +167,8 @@ body {
   align-items: center;
   margin-top: 10px;
 }
-label {
-  font-size: 12px;
-  color: #333;
-  min-width: 70px;
-}
-select,
-input[type="range"],
-button {
-  width: 100%;
-}
-button {
-  padding: 8px;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-  background: white;
-  cursor: pointer;
-}
-.small {
-  font-size: 12px;
-  color: #444;
-  margin-top: 6px;
-}
 
-.tooltip {
-  position: absolute;
-  z-index: 11;
-  pointer-events: none;
-  background: rgba(0, 0, 0, 0.82);
-  color: white;
-  padding: 8px 10px;
-  border-radius: 10px;
-  font-size: 12px;
-  max-width: 280px;
-}
-
+/* Legacy legend */
 .legend {
   margin-top: 10px;
   display: grid;
@@ -154,18 +176,38 @@ button {
   gap: 6px;
   align-items: center;
 }
+
 .swatch {
   height: 10px;
   border-radius: 6px;
 }
+
 .legendLabel {
   font-size: 11px;
-  color: #333;
+  color: var(--text);
   grid-column: span 5;
   margin-top: 6px;
   line-height: 1.2;
+  opacity: 0.9;
 }
 
+/* Tooltip (calm, readable) */
+.tooltip {
+  position: absolute;
+  z-index: 11;
+  pointer-events: none;
+
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--stroke);
+  color: rgba(15, 23, 42, 0.94);
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  max-width: 280px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Legacy detail panel (globe) */
 .detailPanel {
   position: absolute;
   top: 12px;
@@ -174,10 +216,12 @@ button {
   width: 380px;
   max-height: 85vh;
   overflow: auto;
-  background: rgba(255, 255, 255, 0.92);
   padding: 12px;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius-sm);
+
+  background: linear-gradient(180deg, var(--card-strong), var(--card));
+  border: 1px solid var(--stroke);
+  box-shadow: var(--shadow-sm);
 }
 
 .detailHeader {
@@ -186,7 +230,411 @@ button {
   align-items: center;
 }
 
-.closeBtn {
-  width: auto;
+.closeBtn { width: auto; padding: 6px 10px; }
+
+/* ============================
+   App shell / layout
+   ============================ */
+
+.appShell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header: crisp + subtle */
+.appHeader {
+  height: 58px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.86));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  border-bottom: 1px solid var(--stroke);
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.80);
+}
+
+.headerLeft .brand {
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.headerLeft .brand::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, rgba(37,99,235,0.95), rgba(99,102,241,0.85));
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.10), 0 10px 24px rgba(37,99,235,0.18);
+}
+
+.headerLeft .subtitle {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.headerNav { display: flex; gap: 10px; }
+
+.navLink {
+  padding: 8px 10px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-size: 13px;
+
+  color: var(--text);
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.navLink:hover {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(37,99,235,0.20);
+}
+
+.navLink.active {
+  border-color: rgba(37,99,235,0.26);
+  background: rgba(37,99,235,0.06);
+  box-shadow: 0 10px 26px rgba(37, 99, 235, 0.10);
+}
+
+.appMain {
+  flex: 1;
+  min-height: 0;
+  padding: 12px;
+  position: relative;
+  overflow: hidden; /* prevents scrollbars during slide transitions */
+}
+
+/* ============================
+   Dashboard-style grid + cards
+   ============================ */
+
+.pageGrid {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 12px;
+}
+
+.sidePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+/* unified card look */
+.panelCard,
+.vizCard,
+.detailPanelRight,
+.overlayNote,
+.overlayError,
+.stepperBar,
+.helpCard,
+.curtainCard {
+  background: linear-gradient(180deg, var(--card-strong), var(--card));
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--stroke);
+}
+
+.panelCard { padding: 12px; }
+
+.panelTitle {
+  font-weight: 800;
+  color: var(--text);
+}
+
+.panelRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.select,
+.range { width: 100%; }
+
+/* Viz stage */
+.vizStage {
+  position: relative;
+  min-height: 0;
+}
+
+.vizCard {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.vizHeader {
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--stroke-soft);
+}
+
+.vizTitle {
+  font-weight: 900;
+  color: var(--text);
+}
+
+.vizMeta {
+  display: flex;
+  gap: 8px;
+  align-items: start;
+  flex-wrap: wrap;
+}
+
+.pill {
+  font-size: 12px;
   padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--text);
+}
+
+/* Make viz canvas neutral (lets map/charts be the color) */
+.vizCanvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: rgba(2, 6, 23, 0.02);
+}
+
+.mapContainerAbs { position: absolute; inset: 0; }
+
+/* overlays */
+.overlayNote,
+.overlayError {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.overlayError { color: rgba(185, 28, 28, 0.92); }
+
+/* right-side detail panel */
+.detailPanelRight {
+  position: absolute;
+  top: 72px;
+  right: 12px;
+  width: 380px;
+  max-height: calc(100% - 84px);
+  overflow: auto;
+  padding: 12px;
+  z-index: 20;
+}
+
+.detailHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.detailTitle { font-weight: 900; color: var(--text); }
+
+.detailInfo {
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.78);
+}
+
+.detailBody { margin-top: 10px; }
+
+.detailActions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Slots (dashboard placeholders) */
+.slotBox {
+  border: 1px dashed rgba(15, 23, 42, 0.18);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.slotTitle { font-weight: 800; color: var(--text); }
+
+.chipGrid {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.dashboardWrap { height: 100%; }
+
+.dashboardCanvas {
+  height: calc(100vh - 58px - 24px - 64px);
+  padding: 12px;
+}
+
+/* ============================
+   Stepper + Help overlay
+   ============================ */
+
+.stepperBar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+}
+
+.stepperLeft {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stepChip {
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stepChipActive {
+  border-color: rgba(37,99,235,0.24);
+  background: rgba(37,99,235,0.08);
+}
+
+.helpBtn { width: auto; font-size: 13px; }
+
+/* help overlay */
+.helpOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.helpBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.helpCard {
+  position: relative;
+  z-index: 1001;
+  width: min(720px, calc(100vw - 24px));
+  margin: 72px auto 0 auto;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+}
+
+.helpHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+  border-bottom: 1px solid var(--stroke-soft);
+  padding-bottom: 10px;
+}
+
+.helpTitle { font-weight: 900; color: var(--text); }
+
+.helpCloseBtn,
+.helpOkBtn { width: auto; }
+
+.helpBody {
+  padding-top: 10px;
+  font-size: 13px;
+  color: rgba(15, 23, 42, 0.86);
+  line-height: 1.45;
+}
+
+.helpFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12px;
+}
+
+.helpList { margin: 0; padding-left: 18px; }
+
+.helpList li { margin: 6px 0; }
+
+/* ============================
+   Curtain loader (page transitions)
+   ============================ */
+
+.curtain {
+  position: absolute;
+  inset: 0;
+  z-index: 1500;
+  display: grid;
+  place-items: center;
+  background: rgba(2, 6, 23, 0.10);
+  backdrop-filter: blur(2px);
+}
+
+.curtainCard {
+  width: min(520px, calc(100vw - 24px));
+  padding: 14px 14px 12px 14px;
+  border-radius: var(--radius-lg);
+}
+
+.curtainTitle { font-weight: 900; color: var(--text); }
+
+.curtainBar {
+  margin-top: 10px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.08);
+  overflow: hidden;
+  position: relative;
+}
+
+.curtainBar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.35);
+  animation: curtainMove 0.9s ease-in-out infinite;
+}
+
+@keyframes curtainMove {
+  0% { transform: translateX(-20%); }
+  50% { transform: translateX(120%); }
+  100% { transform: translateX(-20%); }
+}
+
+/* Make sure the app is above any bg */
+.appShell {
+  position: relative;
+  z-index: 0;
 }

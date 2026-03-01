@@ -93,6 +93,7 @@ export default function DetailPanel({
   valuesByMetricDiseaseYear,
   metric,
   onClose,
+  onOpenDashboard
 }) {
   const meta = useMemo(() => featureToCountryMeta(feature), [feature]);
   const accent = diseaseAccent(selectedDisease);
@@ -144,6 +145,23 @@ export default function DetailPanel({
       <div className="small" style={{ marginTop: 8 }}>
         Tip: change disease/year/metric and the drill-down updates automatically.
       </div>
+      {onOpenDashboard ? (
+        <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+          <button
+            onClick={() => onOpenDashboard(meta.iso3)}
+            style={{
+              padding: "8px 10px",
+              borderRadius: 10,
+              border: "1px solid rgba(37,99,235,0.45)",
+              background: "white",
+              cursor: "pointer",
+              boxShadow: "0 10px 24px rgba(37,99,235,0.12)",
+            }}
+          >
+            Open Full Dashboard →
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -70,6 +70,8 @@ export function useMapboxGlobe({
   const onLeaveRef = useRef(onLeave);
   const onCountryClickRef = useRef(onCountryClick);
 
+  const fsRafRef = useRef(null); // ajinkya-change (throttle feature-state updates)
+
   useEffect(() => {
     onHoverRef.current = onHover;
   }, [onHover]);
@@ -152,6 +154,7 @@ export function useMapboxGlobe({
     return () => {
       try {
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        if (fsRafRef.current) cancelAnimationFrame(fsRafRef.current); // ajinkya-change
         map.remove();
       } catch {
       } finally {
@@ -238,7 +241,7 @@ export function useMapboxGlobe({
         onCountryClickRef.current?.(f);
       });
 
-      updateFeatureStates(map);
+      scheduleFeatureStateUpdate(map); // ajinkya-change
       startSpinLoop(map);
     };
 
@@ -261,34 +264,45 @@ export function useMapboxGlobe({
       rafRef.current = requestAnimationFrame(step);
     }
 
-    function updateFeatureStates(mapInstance) {
-      const perYear = getPerYear(
-        valuesByMetricDiseaseYear,
-        metric,
-        selectedDisease,
-        selectedYear
-      );
+    function scheduleFeatureStateUpdate(mapInstance) { // ajinkya-change
+      // Throttle to 1 update per animation frame
+      if (fsRafRef.current) cancelAnimationFrame(fsRafRef.current);
 
-      for (const iso of prevIsoSetRef.current) {
-        mapInstance.setFeatureState(
-          { source: "countries", id: iso },
-          { hasValue: false, value: null }
+      fsRafRef.current = requestAnimationFrame(() => {
+        const perYear = getPerYear(
+          valuesByMetricDiseaseYear,
+          metric,
+          selectedDisease,
+          selectedYear
         );
-      }
 
-      const nextSet = new Set();
-      for (const [iso3, val] of Object.entries(perYear)) {
-        nextSet.add(iso3);
-        mapInstance.setFeatureState(
-          { source: "countries", id: iso3 },
-          { hasValue: true, value: val }
-        );
-      }
-      prevIsoSetRef.current = nextSet;
+        // Clear previous
+        for (const iso of prevIsoSetRef.current) {
+          mapInstance.setFeatureState(
+            { source: "countries", id: iso },
+            { hasValue: false, value: null }
+          );
+        }
+
+        // Apply next
+        const nextSet = new Set();
+        for (const [iso3, val] of Object.entries(perYear)) {
+          nextSet.add(iso3);
+          mapInstance.setFeatureState(
+            { source: "countries", id: iso3 },
+            { hasValue: true, value: val }
+          );
+        }
+        prevIsoSetRef.current = nextSet;
+      });
     }
 
     if (map.loaded()) handleLoad();
     else map.once("load", handleLoad);
+
+    // expose for the update effect via closure
+    // eslint-disable-next-line no-unused-vars
+    return () => {};
   }, [
     countriesGeo,
     valuesByMetricDiseaseYear,
@@ -317,29 +331,33 @@ export function useMapboxGlobe({
       diseaseAccent(selectedDisease)
     );
 
-    const perYear = getPerYear(
-      valuesByMetricDiseaseYear,
-      metric,
-      selectedDisease,
-      selectedYear
-    );
-
-    for (const iso of prevIsoSetRef.current) {
-      map.setFeatureState(
-        { source: "countries", id: iso },
-        { hasValue: false, value: null }
+    // ajinkya-change: throttle feature-state changes so year slider doesn't stutter
+    if (fsRafRef.current) cancelAnimationFrame(fsRafRef.current);
+    fsRafRef.current = requestAnimationFrame(() => {
+      const perYear = getPerYear(
+        valuesByMetricDiseaseYear,
+        metric,
+        selectedDisease,
+        selectedYear
       );
-    }
 
-    const nextSet = new Set();
-    for (const [iso3, val] of Object.entries(perYear)) {
-      nextSet.add(iso3);
-      map.setFeatureState(
-        { source: "countries", id: iso3 },
-        { hasValue: true, value: val }
-      );
-    }
-    prevIsoSetRef.current = nextSet;
+      for (const iso of prevIsoSetRef.current) {
+        map.setFeatureState(
+          { source: "countries", id: iso },
+          { hasValue: false, value: null }
+        );
+      }
+
+      const nextSet = new Set();
+      for (const [iso3, val] of Object.entries(perYear)) {
+        nextSet.add(iso3);
+        map.setFeatureState(
+          { source: "countries", id: iso3 },
+          { hasValue: true, value: val }
+        );
+      }
+      prevIsoSetRef.current = nextSet;
+    });
   }, [
     countriesGeo,
     valuesByMetricDiseaseYear,

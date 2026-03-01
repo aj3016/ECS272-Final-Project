@@ -23,3 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.gitignore
+
+# Files
+StreamGraphECharts.jsx
+StreamGraphEChartsFromCsv.jsx
+StreamGraphNivo.jsx
+StreamGraphNivoFromCsv.jsx
+AmbientVanta.jsx
+
