@@ -5,8 +5,8 @@ import PopulationGrowth from "../components/PopulationGrowth";
 import { setDiseaseFromStreamgraph } from "../state/vizStore";
 import { usePageReady } from "../state/pageReady";
 import { useEffect } from "react";
-import StreamGraphEChartsFromCsv from "../components/StreamGraphEChartsFromCsv";
-import StreamGraphNivoFromCsv from "../components/StreamGraphNivoFromCsv";
+// import StreamGraphEChartsFromCsv from "../components/StreamGraphEChartsFromCsv";
+// import StreamGraphNivoFromCsv from "../components/StreamGraphNivoFromCsv";
 
 export default function StreamPage() {
   const navigate = useNavigate();
