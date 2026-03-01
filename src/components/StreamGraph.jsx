@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 
 export default function StreamGraph({
@@ -8,10 +8,36 @@ export default function StreamGraph({
   title = null,
 }) {
   const svgRef = useRef();
+  const containerRef = useRef();
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    const width = 900;
-    const height = 420;
+  function handleResize() {
+    if (!containerRef.current) return;
+
+    const width = containerRef.current.clientWidth;
+
+    const heightFromRatio = width * 0.35;
+    const maxHeight = window.innerHeight * 0.42;
+    const minHeight = 220;   // prevent tiny squished graph
+
+    const height = Math.max(
+      minHeight,
+      Math.min(heightFromRatio, maxHeight)
+    );
+
+    setDimensions({ width, height });
+  }
+
+  handleResize();
+  window.addEventListener("resize", handleResize);
+  return () => window.removeEventListener("resize", handleResize);
+  
+  }, []);
+
+  useEffect(() => {
+    const { width, height } = dimensions;
+    if (!width || !height) return;  
     const margin = { top: 30, right: 30, bottom: 40, left: 80 };
 
     d3.csv("/data/stream-graph-total-deaths.csv").then((raw) => {
@@ -83,8 +109,7 @@ export default function StreamGraph({
       const svg = d3
         .select(svgRef.current)
         .attr("viewBox", [0, 0, width, height])
-        .attr("width", width)
-        .attr("height", height);
+        .attr("preserveAspectRatio", "xMidYMid meet");
 
       svg.selectAll("*").remove();
 
@@ -234,11 +259,18 @@ export default function StreamGraph({
           tooltip.style("opacity", 0);
         });
     });
-  }, [diseases, yScale, title, onDiseaseSelect]);
+  }, [dimensions, diseases, yScale, title, onDiseaseSelect]);
 
   return (
-    <div style={{ position: "relative", width: 900 }}>
-      <svg ref={svgRef} />
+    <div
+    ref={containerRef}
+    style={{
+      position: "relative",
+      width: "100%",     // ← important
+      height: "100%"
+    }}
+  >
+    <svg ref={svgRef} style={{ width: "100%", height: "100%" }} />
       <div
         id="stream-tooltip"
         style={{

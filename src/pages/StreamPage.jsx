@@ -16,10 +16,10 @@ export default function StreamPage() {
   return (
     <div
       style={{
-        width: 900,
-        margin: "0 auto",
-        paddingTop: 20,
-      }}
+  width: "100%",
+  maxWidth: 1100,
+  margin: "0 auto"
+}}
     >
       <StreamView
         onDiseaseSelect={(d) => {

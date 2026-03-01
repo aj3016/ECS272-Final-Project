@@ -35,7 +35,11 @@ export default function StreamView({ onDiseaseSelect }) {
   const config = DISEASE_GROUPS[mode];
 
   return (
-    <div style={{ width: 900, margin: "0 auto" }}>
+    <div style={{
+  width: "100%",
+  maxWidth: 1100,
+  margin: "0 auto"
+}}>
       {/* Header + control */}
       <div
         style={{
