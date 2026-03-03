@@ -39,7 +39,13 @@ function yearColumns(row) {
 async function readCsv(fileName) {
   const fullPath = path.join(DATA_DIR, fileName);
   const raw = await fs.readFile(fullPath, "utf8");
-  return csvParse(raw.replace(/^\uFEFF/, ""));
+  const cleaned = raw.replace(/^\uFEFF/, "");
+  const marker = "\"Country Name\",\"Country Code\",\"Indicator Name\",\"Indicator Code\"";
+  const markerIndex = cleaned.indexOf(marker);
+  if (markerIndex >= 0) {
+    return csvParse(cleaned.slice(markerIndex));
+  }
+  return csvParse(cleaned);
 }
 
 async function main() {
@@ -57,6 +63,8 @@ async function main() {
 
     loaded.push(metric);
 
+    let addedCount = 0;
+
     for (const row of rows) {
       const iso3 = String(row["Country Code"] || "").trim().toUpperCase();
       if (!validIso3(iso3)) continue;
@@ -69,7 +77,14 @@ async function main() {
         const entry = byIsoYear.get(key) || { iso3, year: Number(y) };
         entry[metric.key] = value;
         byIsoYear.set(key, entry);
+        addedCount += 1;
       }
+    }
+
+    if (addedCount === 0) {
+      console.warn(
+        `[warn] No values parsed for ${metric.key} from ${metric.file}. Check CSV format.`
+      );
     }
   }
 
