@@ -27,7 +27,7 @@ function formatYAxisLabel(v, metric) {
 function Sparkline({ series, selectedYear, accent, metric }) {
   const w = 340;
   const h = 150;
-  const pad = 18;
+  const pad = 30;
 
   const xs = series.map((d) => d.year);
   const ys = series.map((d) => d.value).filter((v) => v !== null);
@@ -74,10 +74,25 @@ function Sparkline({ series, selectedYear, accent, metric }) {
       <text x={w - pad} y={h - 6} fontSize="10" fill="#666" textAnchor="end">
         {xMax}
       </text>
-      <text x={pad} y={pad - 6} fontSize="10" fill="#666">
+      <text
+        x={pad - 6} //AJINKYA
+        y={pad} //AJINKYA
+        fontSize="10"
+        fill="#666"
+        textAnchor="end" //AJINKYA
+        dominantBaseline="middle" //AJINKYA
+      >
         {formatYAxisLabel(yMax, metric)}
       </text>
-      <text x={pad} y={h - pad + 12} fontSize="10" fill="#666">
+
+      <text
+        x={pad - 6} //AJINKYA
+        y={h - pad} //AJINKYA
+        fontSize="10"
+        fill="#666"
+        textAnchor="end" //AJINKYA
+        dominantBaseline="middle" //AJINKYA
+      >
         {formatYAxisLabel(yMin, metric)}
       </text>
     </svg>
@@ -93,7 +108,7 @@ export default function DetailPanel({
   valuesByMetricDiseaseYear,
   metric,
   onClose,
-  onOpenDashboard
+  onOpenDashboard,
 }) {
   const meta = useMemo(() => featureToCountryMeta(feature), [feature]);
   const accent = diseaseAccent(selectedDisease);
