@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 
 const DISEASE_COLORS = {
-  "COVID-19": "#d73027",
-  "Influenza": "#e38c63",
-  "HIV/AIDS": "#4575b4",
-  "Measles": "#91bfdb",
-  "Malaria": "#1a9850",
-  "Ebola": "#d7c204",
-  "Dengue": "#e7298a",
+  "COVID-19": "#748f12",
+  "Influenza": "#45bf4d",
+  "HIV/AIDS": "#e7298a",
+  "Measles": "#d73027",
+  "Malaria": "#e1a33f",
+  "Ebola": "#090802",
+  "Dengue": "#a44bed",
 };
 
 export default function StreamGraph({
