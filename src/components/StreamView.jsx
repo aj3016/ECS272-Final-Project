@@ -42,7 +42,7 @@ export default function StreamView({ onDiseaseSelect }) {
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          gap: 10,
           alignItems: "center",
           marginBottom: 8,
         }}
@@ -54,7 +54,7 @@ export default function StreamView({ onDiseaseSelect }) {
         <select
           value={mode}
           onChange={(e) => setMode(e.target.value)}
-          style={{ fontSize: 13, padding: "4px 6px" }}
+          style={{ fontSize: 13, padding: "4px 6px", maxWidth: 220,}}
         >
           {Object.entries(DISEASE_GROUPS).map(([key, cfg]) => (
             <option key={key} value={key}>
@@ -65,12 +65,10 @@ export default function StreamView({ onDiseaseSelect }) {
       </div>
 
       {/* Clarification text (prevents misleading interpretation) */}
-      {/* {mode === "all" && (
-        <div style={{ fontSize: 12, color: "#444", marginBottom: 6 }}>
-          Note: Y-axis uses a symmetric log scale to show both large-scale
-          pandemics and smaller outbreaks in a single view.
+      {<div style={{ fontSize: 12, color: "#444", marginBottom: 6 }}>
+          Hover over both charts to explore yearly values. Use the dropdown to focus on major or smaller outbreaks.
         </div>
-      )} */}
+      }
 
       {/* The ONE stream graph */}
       <StreamGraph 
