@@ -1,55 +1,241 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
+
+const DISEASE_COLORS = {
+  "COVID-19": "#d73027",
+  "Influenza": "#e38c63",
+  "HIV/AIDS": "#4575b4",
+  "Measles": "#91bfdb",
+  "Malaria": "#1a9850",
+  "Ebola": "#f0ed7b",
+  "Dengue": "#e7298a",
+};
 
 export default function StreamGraph({
   onDiseaseSelect = null,
   diseases = null,
-  yScale = "symlog",
+  yScale = "linear",
   title = null,
 }) {
   const svgRef = useRef();
+  const containerRef = useRef();
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
+  // resize
   useEffect(() => {
-    const width = 900;
-    const height = 420;
+    function handleResize() {
+      if (!containerRef.current) return;
+
+      const width = containerRef.current.clientWidth;
+      const heightFromRatio = width * 0.35;
+      const maxHeight = window.innerHeight * 0.42;
+      const minHeight = 220;
+
+      const height = Math.max(minHeight, Math.min(heightFromRatio, maxHeight));
+      setDimensions({ width, height });
+    }
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // draw
+  useEffect(() => {
+    const { width, height } = dimensions;
+    if (!width || !height) return;
+
+    const isOverview = !diseases;
+
     const margin = { top: 30, right: 30, bottom: 40, left: 80 };
 
+    const svg = d3
+      .select(svgRef.current)
+      .attr("viewBox", [0, 0, width, height])
+      .attr("preserveAspectRatio", "xMidYMid meet");
+
+    svg.selectAll("*").interrupt();
+    svg.selectAll("*").remove();
+
+    const tooltip = d3.select("#stream-tooltip");
+    const fmtYear = d3.format("d");
+    const fmtNumber = d3.format(",");
+
     d3.csv("/data/stream-graph-total-deaths.csv").then((raw) => {
-      const data = raw
-        .filter(
-          (d) =>
-            d.location_name === "Global" &&
-            d.metric_name === "Number"
-        )
+      const base = raw
+        .filter((d) => d.location_name === "Global" && d.metric_name === "Number")
         .map((d) => ({
           year: +d.year,
           disease: d.cause_name,
           val: +d.val,
         }));
 
-      let series = Array.from(
-        d3.group(data, (d) => d.disease),
-        ([disease, values]) => ({
-          disease,
-          values: values.slice().sort((a, b) => a.year - b.year),
-        })
+      const filtered = diseases
+        ? base.filter((d) => diseases.includes(d.disease))
+        : base;
+
+      const years = Array.from(new Set(filtered.map((d) => d.year))).sort(
+        (a, b) => a - b
       );
 
-      if (diseases) {
-        series = series.filter((s) => diseases.includes(s.disease));
-      }
+      const diseaseNames = Array.from(
+        new Set(filtered.map((d) => d.disease))
+      );
 
-      series.forEach((s) => {
-        s.maxVal = d3.max(s.values, (d) => d.val) ?? 0;
-        s.totalDeaths = d3.sum(s.values, (d) => d.val);
-      });
-
-      series.sort((a, b) => b.maxVal - a.maxVal);
+      const totalsByDisease = d3.rollup(
+        filtered,
+        (v) => d3.sum(v, (d) => d.val),
+        (d) => d.disease
+      );
 
       const x = d3
         .scaleLinear()
-        .domain([1980, 2023])
+        .domain(d3.extent(years))
         .range([margin.left, width - margin.right]);
+
+      // overview (stacked + boosted for visibility)
+      if (isOverview) {
+
+        const alpha = 0.4; // visibility boost
+
+        const nested = years.map((year) => {
+          const row = { year };
+          diseaseNames.forEach((name) => {
+            const found = filtered.find(
+              (d) => d.year === year && d.disease === name
+            );
+            const rawVal = found ? found.val : 0;
+            row[name] = Math.pow(rawVal, alpha);
+          });
+          return row;
+        });
+
+        const stack = d3
+          .stack()
+          .keys(diseaseNames)
+          .order(d3.stackOrderDescending)
+          .offset(d3.stackOffsetNone);
+
+        const layers = stack(nested);
+
+        const y = d3
+          .scaleLinear()
+          .domain([
+            0,
+            d3.max(layers, (layer) =>
+              d3.max(layer, (d) => d[1])
+            ),
+          ])
+          .range([height - margin.bottom, margin.top]);
+
+        const color = (disease) => DISEASE_COLORS[disease] || "#999";
+
+        const area = d3
+          .area()
+          .x((d) => x(d.data.year))
+          .y0((d) => y(d[0]))
+          .y1((d) => y(d[1]))
+          .curve(d3.curveMonotoneX);
+
+        const areaFlat = d3
+          .area()
+          .x((d) => x(d.data.year))
+          .y0(y(0))
+          .y1(y(0))
+          .curve(d3.curveMonotoneX);
+
+        const paths = svg
+          .append("g")
+          .selectAll("path")
+          .data(layers, (d) => d.key)
+          .join("path")
+          .attr("class", "area")
+          .attr("fill", (d) => color(d.key))
+          .attr("stroke", "#111")
+          .attr("stroke-width", 0.5)
+          .attr("opacity", 0.75)
+          .attr("d", (d) => areaFlat(d))
+          .style("cursor", "pointer")
+          .on("click", (event, d) => {
+            if (onDiseaseSelect) onDiseaseSelect(d.key);
+          })
+          .on("mouseover", function () {
+            d3.select(this).attr("opacity", 0.95);
+          })
+          .on("mouseout", function () {
+            d3.select(this).attr("opacity", 0.75);
+          });
+
+        paths
+          .transition()
+          .duration(1200)
+          .ease(d3.easeCubicOut)
+          .attr("d", (d) => area(d));
+
+        // X axis only
+        svg
+          .append("g")
+          .attr("transform", `translate(0,${height - margin.bottom})`)
+          .call(d3.axisBottom(x).tickFormat(fmtYear));
+
+        // Tooltip
+        svg.on("mousemove", function (event) {
+          const elements = document.elementsFromPoint(
+            event.clientX,
+            event.clientY
+          );
+
+          const topArea = elements.find(
+            (el) => el.tagName === "path" && el.classList.contains("area")
+          );
+
+          if (!topArea) {
+            tooltip.style("opacity", 0);
+            return;
+          }
+
+          const datum = d3.select(topArea).datum();
+          const disease = datum.key;
+          const total = totalsByDisease.get(disease);
+
+          const [mx, my] = d3.pointer(event, svg.node());
+
+          tooltip
+            .style("opacity", 1)
+            .style("background", color(disease))
+            .style("color", "white")
+            .html(`
+              <div style="font-weight:600; margin-bottom:4px;">
+                ${disease}
+              </div>
+              <div style="font-size:13px;">
+                Total deaths (1980–2023):
+              </div>
+              <div style="font-size:14px; font-weight:600;">
+                ${fmtNumber(Math.round(total))}
+              </div>
+            `)
+            .style("left", `${mx + 14}px`)
+            .style("top", `${my + 14}px`);
+        }).on("mouseleave", () => tooltip.style("opacity", 0));
+
+        return;
+      }
+
+      let series = Array.from(
+        d3.group(filtered, (d) => d.disease),
+        ([disease, v]) => ({
+          disease,
+          values: v.slice().sort((a, b) => a.year - b.year),
+          totalDeaths: d3.sum(v, (d) => d.val),
+        })
+      );
+
+      series.forEach((s) => {
+        s.maxVal = d3.max(s.values, (d) => d.val) ?? 0;
+      });
+
+      series.sort((a, b) => b.maxVal - a.maxVal);
 
       const maxVal =
         d3.max(series.flatMap((s) => s.values), (d) => d.val) ?? 1;
@@ -61,10 +247,7 @@ export default function StreamGraph({
 
       y.range([height - margin.bottom, margin.top]);
 
-      const color = d3
-        .scaleOrdinal()
-        .domain(series.map((s) => s.disease))
-        .range(d3.schemeTableau10);
+      const color = (disease) => DISEASE_COLORS[disease] || "#999";
 
       const area = d3
         .area()
@@ -80,33 +263,6 @@ export default function StreamGraph({
         .y1(y(0))
         .curve(d3.curveMonotoneX);
 
-      const svg = d3
-        .select(svgRef.current)
-        .attr("viewBox", [0, 0, width, height])
-        .attr("width", width)
-        .attr("height", height);
-
-      svg.selectAll("*").remove();
-
-      // Title
-      if (title) {
-        svg
-          .append("text")
-          .attr("x", margin.left)
-          .attr("y", 18)
-          .attr("font-size", 13)
-          .attr("font-weight", 600)
-          .attr("opacity", 0)
-          .text(title)
-          .transition()
-          .delay(1200)
-          .duration(600)
-          .attr("opacity", 1);
-      }
-
-      // -----------------------------
-      // Draw clickable areas
-      // -----------------------------
       const areas = svg
         .append("g")
         .selectAll(".area")
@@ -114,15 +270,13 @@ export default function StreamGraph({
         .join("path")
         .attr("class", "area")
         .attr("fill", (d) => color(d.disease))
-        .attr("d", (d) => areaFlat(d.values))
-        .attr("opacity", 0.55)
         .attr("stroke", "#111")
         .attr("stroke-width", 0.5)
+        .attr("opacity", 0.55)
+        .attr("d", (d) => areaFlat(d.values))
         .style("cursor", "pointer")
-        .on("click", function (event, d) {
-          if (onDiseaseSelect) {
-            onDiseaseSelect(d.disease);
-          }
+        .on("click", (event, d) => {
+          if (onDiseaseSelect) onDiseaseSelect(d.disease);
         })
         .on("mouseover", function () {
           d3.select(this)
@@ -135,7 +289,6 @@ export default function StreamGraph({
             .attr("stroke-width", 0.5);
         });
 
-      // Animate rise
       areas
         .transition()
         .delay((d, i) => i * 120)
@@ -143,102 +296,67 @@ export default function StreamGraph({
         .ease(d3.easeCubicOut)
         .attr("d", (d) => area(d.values));
 
-      // Axes
       const xAxis = svg
         .append("g")
         .attr("transform", `translate(0,${height - margin.bottom})`)
-        .attr("opacity", 0)
-        .call(d3.axisBottom(x).tickFormat(d3.format("d")));
+        .call(d3.axisBottom(x).tickFormat(fmtYear));
 
       const yAxis = svg
         .append("g")
         .attr("transform", `translate(${margin.left},0)`)
-        .attr("opacity", 0)
-        .call(
-          d3.axisLeft(y)
-            .tickValues(
-              yScale === "linear"
-                ? undefined
-                : [0, 1e3, 5e3, 1e4, 5e4, 1e5, 5e5, 1e6, 5e6, 1e7]
-            )
-            .tickFormat(d3.format(".2s"))
-            .tickSizeOuter(0)
-            .tickPadding(8)
-        )
-        .call((g) => g.select(".domain").attr("stroke-width", 1.2));
-
-      xAxis.transition().delay(1500).duration(600).attr("opacity", 1);
-      yAxis.transition().delay(1500).duration(600).attr("opacity", 1);
-
-      svg
-        .append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("x", -height / 2)
-        .attr("y", 20)
-        .attr("text-anchor", "middle")
-        .attr("font-size", 12)
-        .attr("opacity", 0)
-        .text("Number of deaths")
-        .transition()
-        .delay(1600)
-        .duration(600)
-        .attr("opacity", 1);
+        .call(d3.axisLeft(y).tickFormat(d3.format(".2s")));
 
       // Tooltip
-      const tooltip = d3.select("#stream-tooltip");
+      svg.on("mousemove", function (event) {
+        const [mx, my] = d3.pointer(event, svg.node());
 
-      svg
-        .on("mousemove", function (event) {
-          const [mx, my] = d3.pointer(event, svg.node());
+        const elements = document.elementsFromPoint(
+          event.clientX,
+          event.clientY
+        );
 
-          const elements = document.elementsFromPoint(
-            event.clientX,
-            event.clientY
-          );
+        const topArea = elements.find(
+          (el) =>
+            el.tagName === "path" &&
+            el.classList.contains("area")
+        );
 
-          const topArea = elements.find(
-            (el) =>
-              el.tagName === "path" &&
-              el.classList.contains("area")
-          );
-
-          if (!topArea) {
-            tooltip.style("opacity", 0);
-            return;
-          }
-
-          const datum = d3.select(topArea).datum();
-          const disease = datum.disease;
-          const total = datum.totalDeaths;
-          const bandColor = color(disease);
-
-          tooltip
-            .style("opacity", 1)
-            .style("background", bandColor)
-            .style("color", "white")
-            .html(`
-              <div style="font-weight:600; margin-bottom:4px;">
-                ${disease}
-              </div>
-              <div style="font-size:13px;">
-                Total deaths (1980–2023):
-              </div>
-              <div style="font-size:14px; font-weight:600;">
-                ${d3.format(",")(Math.round(total))}
-              </div>
-            `)
-            .style("left", `${mx + 14}px`)
-            .style("top", `${my + 14}px`);
-        })
-        .on("mouseleave", () => {
+        if (!topArea) {
           tooltip.style("opacity", 0);
-        });
+          return;
+        }
+
+        const datum = d3.select(topArea).datum();
+        const disease = datum.disease;
+        const total = datum.totalDeaths;
+
+        tooltip
+          .style("opacity", 1)
+          .style("background", color(disease))
+          .style("color", "white")
+          .html(`
+            <div style="font-weight:600; margin-bottom:4px;">
+              ${disease}
+            </div>
+            <div style="font-size:13px;">
+              Total deaths (1980–2023):
+            </div>
+            <div style="font-size:14px; font-weight:600;">
+              ${fmtNumber(Math.round(total))}
+            </div>
+          `)
+          .style("left", `${mx + 14}px`)
+          .style("top", `${my + 14}px`);
+      }).on("mouseleave", () => tooltip.style("opacity", 0));
     });
-  }, [diseases, yScale, title, onDiseaseSelect]);
+  }, [dimensions, diseases, yScale, title, onDiseaseSelect]);
 
   return (
-    <div style={{ position: "relative", width: 900 }}>
-      <svg ref={svgRef} />
+    <div
+      ref={containerRef}
+      style={{ position: "relative", width: "100%", height: "100%" }}
+    >
+      <svg ref={svgRef} style={{ width: "100%", height: "100%" }} />
       <div
         id="stream-tooltip"
         style={{

@@ -11,7 +11,7 @@ const DISEASE_GROUPS = {
     label: "High-volume diseases",
     diseases: [
       "COVID-19",
-      "Lower respiratory infections",
+      "Influenza",
       "HIV/AIDS",
       "Measles",
       "Malaria",
@@ -23,7 +23,6 @@ const DISEASE_GROUPS = {
     diseases: [
       "Ebola",
       "Dengue",
-      // "Malaria",
     ],
     scale: "linear",
   },
@@ -35,7 +34,11 @@ export default function StreamView({ onDiseaseSelect }) {
   const config = DISEASE_GROUPS[mode];
 
   return (
-    <div style={{ width: 900, margin: "0 auto" }}>
+    <div style={{
+  width: "100%",
+  maxWidth: 1100,
+  margin: "0 auto"
+}}>
       {/* Header + control */}
       <div
         style={{
@@ -63,12 +66,12 @@ export default function StreamView({ onDiseaseSelect }) {
       </div>
 
       {/* Clarification text (prevents misleading interpretation) */}
-      {mode === "all" && (
+      {/* {mode === "all" && (
         <div style={{ fontSize: 12, color: "#444", marginBottom: 6 }}>
           Note: Y-axis uses a symmetric log scale to show both large-scale
           pandemics and smaller outbreaks in a single view.
         </div>
-      )}
+      )} */}
 
       {/* The ONE stream graph */}
       <StreamGraph 
