@@ -36,7 +36,6 @@ export default function StreamView({ onDiseaseSelect }) {
   return (
     <div style={{
   width: "100%",
-  maxWidth: 1100,
   margin: "0 auto"
 }}>
       {/* Header + control */}

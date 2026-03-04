@@ -7,7 +7,7 @@ const DISEASE_COLORS = {
   "HIV/AIDS": "#4575b4",
   "Measles": "#91bfdb",
   "Malaria": "#1a9850",
-  "Ebola": "#f0ed7b",
+  "Ebola": "#d7c204",
   "Dengue": "#e7298a",
 };
 
@@ -20,6 +20,7 @@ export default function StreamGraph({
   const svgRef = useRef();
   const containerRef = useRef();
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [data, setData] = useState(null);
 
   // resize
   useEffect(() => {
@@ -40,6 +41,20 @@ export default function StreamGraph({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+  d3.csv("/data/stream-graph-total-deaths.csv").then((raw) => {
+    const parsed = raw
+      .filter((d) => d.location_name === "Global" && d.metric_name === "Number")
+      .map((d) => ({
+        year: +d.year,
+        disease: d.cause_name,
+        val: +d.val,
+      }));
+
+    setData(parsed);
+  });
+}, []);
+
   // draw
   useEffect(() => {
     const { width, height } = dimensions;
@@ -47,7 +62,12 @@ export default function StreamGraph({
 
     const isOverview = !diseases;
 
-    const margin = { top: 30, right: 30, bottom: 40, left: 80 };
+    const margin = {
+    top: height * 0.08,
+    right: width * 0.02,
+    bottom: height * 0.12,
+    left: width * 0.035,
+  };
 
     const svg = d3
       .select(svgRef.current)
@@ -61,14 +81,8 @@ export default function StreamGraph({
     const fmtYear = d3.format("d");
     const fmtNumber = d3.format(",");
 
-    d3.csv("/data/stream-graph-total-deaths.csv").then((raw) => {
-      const base = raw
-        .filter((d) => d.location_name === "Global" && d.metric_name === "Number")
-        .map((d) => ({
-          year: +d.year,
-          disease: d.cause_name,
-          val: +d.val,
-        }));
+    if (!data) return;
+    const base = data;
 
       const filtered = diseases
         ? base.filter((d) => diseases.includes(d.disease))
@@ -82,16 +96,83 @@ export default function StreamGraph({
         new Set(filtered.map((d) => d.disease))
       );
 
-      const totalsByDisease = d3.rollup(
-        filtered,
-        (v) => d3.sum(v, (d) => d.val),
-        (d) => d.disease
-      );
+      const totalsByYear = d3.rollup(
+  filtered,
+  (v) => d3.sum(v, (d) => d.val),
+  (d) => d.year
+);
 
       const x = d3
         .scaleLinear()
         .domain(d3.extent(years))
         .range([margin.left, width - margin.right]);
+
+      const cursor = svg
+        .append("line")
+        .attr("class", "year-cursor")
+        .attr("y1", margin.top)
+        .attr("y2", height - margin.bottom)
+        .attr("stroke", "#222")
+        .attr("stroke-width", 1.5)
+        .attr("opacity", 0)
+        .raise();
+
+  function handleHover(event) {
+      const { year, source } = event.detail;
+
+      // move the vertical cursor
+      cursor
+        .attr("x1", x(year))
+        .attr("x2", x(year))
+        .attr("opacity", 1);
+
+      // if event came from stream graph, do nothing here
+      // (stream graph mousemove already renders its own tooltip)
+      if (source === "stream") return;
+
+      // otherwise this is coming from the population line chart
+      const total = totalsByYear.get(year);
+
+      tooltip
+        .style("opacity", 1)
+        .style("background", "#333")
+        .style("color", "white")
+        .html(`
+          <div style="font-weight:600;">${year}</div>
+          <div>Total deaths (all diseases)</div>
+          <div style="font-size:15px;font-weight:600;">
+            ${fmtNumber(Math.round(total))}
+          </div>
+        `);
+
+      const tooltipNode = tooltip.node();
+      const tooltipWidth = tooltipNode.offsetWidth;
+
+      let left = x(year) + 12;
+
+      const containerWidth = containerRef.current.clientWidth;
+
+      if (left + tooltipWidth > containerWidth - 10) {
+        left = x(year) - tooltipWidth - 12;
+      }
+
+      tooltip
+        .style("left", `${left}px`)
+        .style("top", `${margin.top + 10}px`);
+    }
+
+  window.addEventListener("hoverYear", handleHover);
+
+  function hideStreamHover() {
+    tooltip.style("opacity", 0);
+    cursor.attr("opacity", 0);
+  }
+
+  function handleHoverOff() {
+    hideStreamHover();
+  }
+
+  window.addEventListener("hoverOff", handleHoverOff);
 
       // overview (stacked + boosted for visibility)
       if (isOverview) {
@@ -180,44 +261,66 @@ export default function StreamGraph({
 
         // Tooltip
         svg.on("mousemove", function (event) {
-          const elements = document.elementsFromPoint(
-            event.clientX,
-            event.clientY
-          );
 
-          const topArea = elements.find(
-            (el) => el.tagName === "path" && el.classList.contains("area")
-          );
+    const elements = document.elementsFromPoint(
+      event.clientX,
+      event.clientY
+    );
 
-          if (!topArea) {
-            tooltip.style("opacity", 0);
-            return;
-          }
+    const topArea = elements.find(
+      (el) => el.tagName === "path" && el.classList.contains("area")
+    );
 
-          const datum = d3.select(topArea).datum();
-          const disease = datum.key;
-          const total = totalsByDisease.get(disease);
+    if (!topArea) {
+    tooltip.style("opacity", 0);
+    cursor.attr("opacity", 0);
+    return;
+  }
 
-          const [mx, my] = d3.pointer(event, svg.node());
+  const datum = d3.select(topArea).datum();
+  const disease = datum.key;
 
-          tooltip
-            .style("opacity", 1)
-            .style("background", color(disease))
-            .style("color", "white")
-            .html(`
-              <div style="font-weight:600; margin-bottom:4px;">
-                ${disease}
-              </div>
-              <div style="font-size:13px;">
-                Total deaths (1980–2023):
-              </div>
-              <div style="font-size:14px; font-weight:600;">
-                ${fmtNumber(Math.round(total))}
-              </div>
-            `)
-            .style("left", `${mx + 14}px`)
-            .style("top", `${my + 14}px`);
-        }).on("mouseleave", () => tooltip.style("opacity", 0));
+  const [mx, my] = d3.pointer(event, svg.node());
+
+  const year = Math.round(x.invert(mx));
+  const deathsThisYear = totalsByYear.get(year);
+
+  // move cursor
+  cursor
+    .attr("x1", x(year))
+    .attr("x2", x(year))
+    .attr("opacity", 1);
+
+  tooltip
+    .style("opacity", 1)
+    .style("background", color(disease))
+    .style("color", "white")
+    .html(`
+      <div style="font-weight:600; margin-bottom:4px;">
+        ${disease}
+      </div>
+      <div style="font-size:13px;">
+        ${year}
+      </div>
+      <div style="font-size:14px; font-weight:600;">
+        ${fmtNumber(Math.round(deathsThisYear))} deaths
+      </div>
+    `);
+    const tooltipNode = tooltip.node();
+    const tooltipWidth = tooltipNode.offsetWidth;
+
+    let left = mx + 14;
+
+    if (left + tooltipWidth > width - 10) {
+      left = mx - tooltipWidth - 14;
+    }
+
+    tooltip.style("left", `${left}px`)
+        .style("top", `${margin.top + 10}px`);
+
+    }).on("mouseleave", () => {
+      hideStreamHover();
+    });
 
         return;
       }
@@ -323,33 +426,67 @@ export default function StreamGraph({
 
         if (!topArea) {
           tooltip.style("opacity", 0);
+          cursor.attr("opacity", 0);
           return;
         }
 
         const datum = d3.select(topArea).datum();
         const disease = datum.disease;
-        const total = datum.totalDeaths;
+
+const year = Math.round(x.invert(mx));
+
+cursor
+  .attr("x1", x(year))
+  .attr("x2", x(year))
+  .attr("opacity", 1);
+
+window.dispatchEvent(
+  new CustomEvent("hoverYear", {
+    detail: { year, source: "stream" }
+  })
+);
+
+const point = datum.values.find(d => d.year === year);
+if (!point) return;
+
+const deathsThisYear = point.val;
 
         tooltip
           .style("opacity", 1)
           .style("background", color(disease))
           .style("color", "white")
           .html(`
-            <div style="font-weight:600; margin-bottom:4px;">
-              ${disease}
-            </div>
-            <div style="font-size:13px;">
-              Total deaths (1980–2023):
-            </div>
-            <div style="font-size:14px; font-weight:600;">
-              ${fmtNumber(Math.round(total))}
-            </div>
-          `)
-          .style("left", `${mx + 14}px`)
-          .style("top", `${my + 14}px`);
-      }).on("mouseleave", () => tooltip.style("opacity", 0));
-    });
-  }, [dimensions, diseases, yScale, title, onDiseaseSelect]);
+  <div style="font-weight:600; margin-bottom:4px;">
+    ${disease}
+  </div>
+  <div style="font-size:13px;">
+    ${year}
+  </div>
+  <div style="font-size:14px; font-weight:600;">
+    ${fmtNumber(Math.round(deathsThisYear))} deaths
+  </div>
+`);
+          const tooltipNode = tooltip.node();
+const tooltipWidth = tooltipNode.offsetWidth;
+
+let left = mx + 14;
+
+if (left + tooltipWidth > width - 10) {
+  left = mx - tooltipWidth - 14;
+}
+
+tooltip.style("left", `${left}px`)
+          .style("top", `${margin.top + 10}px`);
+      }).on("mouseleave", () => {
+  hideStreamHover();
+});
+
+    return () => {
+      window.removeEventListener("hoverYear", handleHover);
+      window.removeEventListener("hoverOff", handleHoverOff);
+    };
+
+  }, [dimensions, diseases, yScale, title, onDiseaseSelect, data]);
 
   return (
     <div
@@ -358,20 +495,21 @@ export default function StreamGraph({
     >
       <svg ref={svgRef} style={{ width: "100%", height: "100%" }} />
       <div
-        id="stream-tooltip"
-        style={{
-          position: "absolute",
-          pointerEvents: "none",
-          padding: "8px 12px",
-          borderRadius: "8px",
-          fontSize: "14px",
-          lineHeight: "1.3",
-          maxWidth: "220px",
-          opacity: 0,
-          transition: "opacity 0.15s ease",
-          whiteSpace: "normal",
-        }}
-      />
+  id="stream-tooltip"
+  style={{
+    position: "absolute",
+    pointerEvents: "none",
+    padding: "8px 12px",
+    borderRadius: "8px",
+    fontSize: "14px",
+    lineHeight: "1.3",
+    maxWidth: "220px",
+    opacity: 0,
+    transition: "opacity 0.15s ease",
+    whiteSpace: "normal",
+    zIndex: 10
+  }}
+/>
     </div>
   );
 }

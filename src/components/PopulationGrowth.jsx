@@ -70,15 +70,24 @@ export default function PopulationGrowth() {
   const { width, height } = dimensions;
   if (!width || !height) return;
 
-  const margin = { top: 18, right: 30, bottom: 40, left: 80 };
+  const margin = {
+    top: height * 0.08,
+    right: width * 0.02,
+    bottom: height * 0.12,
+    left: width * 0.035,
+  };
 
   const svg = d3
     .select(svgRef.current)
     .attr("viewBox", [0, 0, width, height])
     .attr("preserveAspectRatio", "xMidYMid meet");
 
-  svg.selectAll("*").interrupt(); // 🔥 stop old transitions
+  svg.selectAll("*").interrupt();
   svg.selectAll("*").remove();
+
+  const tooltip = d3.select("#pop-tooltip");
+  const fmtYear = d3.format("d");
+  const fmtPercent = d3.format(".2f");
 
   const x = d3
     .scaleLinear()
@@ -96,6 +105,96 @@ export default function PopulationGrowth() {
     .x((d) => x(d.year))
     .y((d) => y(d.value))
     .curve(d3.curveMonotoneX);
+
+  const cursor = svg
+  .append("line")
+  .attr("class", "year-cursor")
+  .attr("y1", margin.top)
+  .attr("y2", height - margin.bottom)
+  .attr("stroke", "#444")
+  .attr("stroke-width", 1)
+  .attr("opacity", 0);
+
+  svg.append("rect")
+  .attr("x", margin.left)
+  .attr("y", margin.top)
+  .attr("width", width - margin.left - margin.right)
+  .attr("height", height - margin.top - margin.bottom)
+  .attr("fill", "transparent")
+  .on("mousemove", function(event) {
+
+    const [mx] = d3.pointer(event, this);
+    const year = Math.round(x.invert(mx));
+
+    const point = data.find(d => d.year === year);
+if (!point) return;
+
+const prev = data.find(d => d.year === year - 1);
+
+let change = null;
+let changeFormatted = "N/A";
+
+if (prev) {
+  change = point.value - prev.value;
+
+  if (change > 0) {
+    changeFormatted = "+" + fmtPercent(change) + "%";
+  } else {
+    changeFormatted = fmtPercent(change) + "%";
+  }
+}
+
+const tooltipNode = tooltip.node();
+const tooltipWidth = tooltipNode.offsetWidth;
+const tooltipHeight = tooltipNode.offsetHeight;
+
+let left = mx + 15;
+let top = margin.top + 10;
+
+// prevent tooltip leaving right edge
+if (left + tooltipWidth > width) {
+  left = mx - tooltipWidth - 15;
+}
+
+// prevent tooltip leaving left edge
+if (left < 0) {
+  left = 5;
+}
+
+// prevent tooltip leaving top
+if (top < 0) {
+  top = 5;
+}
+
+tooltip
+  .style("opacity", 1)
+  .html(`
+    <div style="font-weight:600">${fmtYear(year)}</div>
+    <div>Growth rate: ${fmtPercent(point.value)}%</div>
+    <div>
+      Change from prev year: 
+      ${changeFormatted}
+    </div>
+  `)
+  .style("left", `${left}px`)
+  .style("top", `${top}px`);
+
+    cursor
+      .attr("x1", x(year))
+      .attr("x2", x(year))
+      .attr("opacity", 1);
+
+    window.dispatchEvent(
+  new CustomEvent("hoverYear", {
+    detail: { year, source: "pop" }
+  })
+);
+  })
+  .on("mouseleave", () => {
+  cursor.attr("opacity", 0);
+  tooltip.style("opacity", 0);
+  window.dispatchEvent(new CustomEvent("hoverOff"));
+});
 
   const path = svg
     .append("path")
@@ -143,6 +242,20 @@ export default function PopulationGrowth() {
       style={{ width: "100%", position: "relative" }}
     >
       <svg ref={svgRef} style={{ width: "100%", height: "100%" }} />
+      <div
+        id="pop-tooltip"
+        style={{
+          position: "absolute",
+          pointerEvents: "none",
+          padding: "8px 12px",
+          borderRadius: "8px",
+          fontSize: "13px",
+          background: "#111",
+          color: "white",
+          opacity: 0,
+          transition: "opacity 0.15s ease",
+        }}
+      />
     </div>
   );
 }
