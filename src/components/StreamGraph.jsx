@@ -283,7 +283,9 @@ export default function StreamGraph({
   const [mx, my] = d3.pointer(event, svg.node());
 
   const year = Math.round(x.invert(mx));
-  const deathsThisYear = totalsByYear.get(year);
+  const deathsThisYear = filtered.find(
+    (d) => d.year === year && d.disease === disease
+  )?.val ?? 0;
 
   // move cursor
   cursor
