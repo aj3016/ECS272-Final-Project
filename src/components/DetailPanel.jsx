@@ -27,7 +27,7 @@ function formatYAxisLabel(v, metric) {
 function Sparkline({ series, selectedYear, accent, metric }) {
   const w = 340;
   const h = 150;
-  const pad = 30;
+  const pad = 36;
 
   const xs = series.map((d) => d.year);
   const ys = series.map((d) => d.value).filter((v) => v !== null);
@@ -75,23 +75,23 @@ function Sparkline({ series, selectedYear, accent, metric }) {
         {xMax}
       </text>
       <text
-        x={pad - 6} //AJINKYA
-        y={pad} //AJINKYA
+        x={pad} 
+        y={pad} 
         fontSize="10"
         fill="#666"
-        textAnchor="end" //AJINKYA
-        dominantBaseline="middle" //AJINKYA
+        textAnchor="end" 
+        dominantBaseline="middle" 
       >
         {formatYAxisLabel(yMax, metric)}
       </text>
 
       <text
-        x={pad - 6} //AJINKYA
-        y={h - pad} //AJINKYA
+        x={pad - 6} 
+        y={h - pad} 
         fontSize="10"
         fill="#666"
-        textAnchor="end" //AJINKYA
-        dominantBaseline="middle" //AJINKYA
+        textAnchor="end" 
+        dominantBaseline="middle" 
       >
         {formatYAxisLabel(yMin, metric)}
       </text>
