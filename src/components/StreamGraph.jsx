@@ -149,6 +149,32 @@ export default function StreamGraph({
       .on("click", (event, d) => {
         if (onDiseaseSelect) onDiseaseSelect(d.key);
       })
+      .on("mouseenter", function(event, d) {
+        // Check if we are in 'Overview' mode (no specific disease selected in dropdown)
+        const isOverview = diseases === null;
+        if (isOverview) {
+          // OVERVIEW MODE: Just outline the band, keep others bright
+          d3.select(this)
+            .attr("stroke", "#000")
+            .attr("stroke-width", 2)
+            .raise(); // Pulls the outlined band to the front so the border is visible
+        } else {
+          // FILTERED MODE: Dim others, highlight this one
+          svg.selectAll(".area-path")
+            .style("opacity", 0.25);
+          
+          d3.select(this)
+            .style("opacity", 1)
+            .attr("stroke", "#000")
+            .attr("stroke-width", 1);
+        }
+      })
+      .on("mouseleave", function() {
+        // Reset everything
+        svg.selectAll(".area-path")
+          .style("opacity", 1)
+          .attr("stroke", "none");
+      })
       .transition()
       .duration(1200)
       .ease(d3.easeCubicOut)

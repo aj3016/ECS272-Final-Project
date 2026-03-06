@@ -87,7 +87,9 @@ export default function AppLayout() {
           <Outlet />
 
           {/* Curtain overlays while new view loads */}
-          <TransitionCurtain show={curtainOpen} dir={dirRef.current} />
+          {!loc.pathname.startsWith("/transition") && (
+            <TransitionCurtain show={curtainOpen} dir={dirRef.current} />
+          )}
         </main>
       </div>
     </PageReadyProvider>
