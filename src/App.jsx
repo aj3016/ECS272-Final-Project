@@ -12,6 +12,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/stream" replace />} />
         <Route path="/stream" element={<StreamPage />} />
         <Route path="/globe" element={<GlobePage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/dashboard/:iso3" element={<DashboardPage />} />
         <Route path="*" element={<Navigate to="/stream" replace />} />
       </Route>

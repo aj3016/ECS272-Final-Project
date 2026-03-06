@@ -41,8 +41,9 @@ export default function Header() {
         helpTitle: "Dashboard help",
         helpContent: (
           <ul className="helpList">
-            <li>This page is wired for country drilldown from the Globe.</li>
-            <li>Your teammate can drop the dashboard visualization here.</li>
+            <li>Use the year slider to focus a specific time point across all charts.</li>
+            <li>Hover inside any chart to synchronize year comparison across metrics.</li>
+            <li>Switch disease and burden metric to compare disruption and recovery.</li>
           </ul>
         ),
       };
