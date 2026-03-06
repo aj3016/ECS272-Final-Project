@@ -59,12 +59,13 @@ function withUnit(text, unitLabel) {
 }
 
 export default function TimeSeriesPanel({
-    title,
-    subtitle = "",
-    series,
-    rangeStart,
-    rangeEnd,
-    hoverYear,
+  title,
+  subtitle = "",
+  series,
+  referenceSeries = null,
+  rangeStart,
+  rangeEnd,
+  hoverYear,
     onHoverYear,
     accent = "#2563eb",
     valueFormatter,
@@ -81,6 +82,13 @@ export default function TimeSeriesPanel({
     () => series.filter((d) => Number.isFinite(d.year) && Number.isFinite(d.value)),
     [series]
   );
+  const referenceFinite = useMemo(
+    () =>
+      (referenceSeries || []).filter(
+        (d) => Number.isFinite(d.year) && Number.isFinite(d.value)
+      ),
+    [referenceSeries]
+  );
 
   if (!finite.length) {
     return (
@@ -96,8 +104,9 @@ export default function TimeSeriesPanel({
 
   const xMin = Math.min(...series.map((d) => d.year));
   const xMax = Math.max(...series.map((d) => d.year));
-  const dataMin = Math.min(...finite.map((d) => d.value));
-  const dataMax = Math.max(...finite.map((d) => d.value));
+  const allFinite = [...finite, ...referenceFinite];
+  const dataMin = Math.min(...allFinite.map((d) => d.value));
+  const dataMax = Math.max(...allFinite.map((d) => d.value));
   const yMin = Math.min(0, dataMin);
   const yMax = Math.max(0, dataMax);
 
@@ -108,12 +117,22 @@ export default function TimeSeriesPanel({
     h - padB - ((y - yMin) / Math.max(1e-9, yMax - yMin)) * (h - padT - padB);
 
   const path = buildSparkPath(series, xScale, yScale);
+  const referencePath =
+    referenceSeries && referenceSeries.length
+      ? buildSparkPath(referenceSeries, xScale, yScale)
+      : "";
   const effectiveEnd = Number.isFinite(hoverYear) ? hoverYear : rangeEnd;
   const point = getPointAtYear(series, effectiveEnd);
   const startValue = valueAtNearestYear(series, rangeStart);
   const endValue = valueAtNearestYear(series, effectiveEnd);
   const rangeDelta =
     Number.isFinite(startValue) && Number.isFinite(endValue) ? endValue - startValue : null;
+  const avgStartValue = valueAtNearestYear(referenceSeries || [], rangeStart);
+  const avgEndValue = valueAtNearestYear(referenceSeries || [], effectiveEnd);
+  const avgDelta =
+    Number.isFinite(avgStartValue) && Number.isFinite(avgEndValue)
+      ? avgEndValue - avgStartValue
+      : null;
 
   const handleMove = (e) => {
     if (!onHoverYear) return;
@@ -144,6 +163,11 @@ export default function TimeSeriesPanel({
               Max ({effectiveEnd}): {withUnit(formatValue(endValue, valueFormatter), unitLabel)}
             </div>
           </div>
+          {referenceFinite.length ? (
+            <div className="dashChartStatAvg">
+              Avg Δ: {withUnit(formatDelta(avgDelta, valueFormatter), unitLabel)}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -153,6 +177,10 @@ export default function TimeSeriesPanel({
 
         <line x1={padL} y1={(padT + h - padB) / 2} x2={w - padR} y2={(padT + h - padB) / 2} className="dashGrid" />
 
+        {referencePath ? (
+          <path d={referencePath} fill="none" className="dashAvgLine" />
+        ) : null}
+
         <path d={path} fill="none" stroke={accent} strokeWidth="3" />
 
         {Number.isFinite(rangeStart) && Number.isFinite(effectiveEnd) ? (
@@ -161,8 +189,7 @@ export default function TimeSeriesPanel({
             y={padT}
             width={Math.max(1, xScale(Math.max(rangeStart, effectiveEnd)) - xScale(Math.min(rangeStart, effectiveEnd)))}
             height={h - padT - padB}
-            fill={accent}
-            opacity="0.08"
+            className="dashWindowFill"
           />
         ) : null}
 

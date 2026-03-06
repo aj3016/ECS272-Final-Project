@@ -104,13 +104,13 @@ export default function DashboardPage() {
       [demoYears]
     );
 
-    useEffect(() => {
-      if (!allYears.length) return;
-      const minY = allYears[0];
-      const maxY = allYears[allYears.length - 1];
-      const widthMax = Math.max(1, Math.min(64, maxY - minY));
-      const nextWidth = clamp(rangeWidth, 1, widthMax);
-      setRangeWidth(nextWidth);
+  useEffect(() => {
+    if (!allYears.length) return;
+    const minY = allYears[0];
+    const maxY = allYears[allYears.length - 1];
+    const widthMax = Math.max(1, maxY - minY);
+    const nextWidth = clamp(rangeWidth, 1, widthMax);
+    setRangeWidth(nextWidth);
       const initialEnd = yearFromQuery ?? 2000;
       const nextEnd = nearestYear(allYears, initialEnd);
       setRangeAnchorEnd(clamp(nextEnd, minY + nextWidth, maxY));
@@ -129,7 +129,7 @@ export default function DashboardPage() {
       [allYears, rangeEnd, effectiveRangeWidth]
     );
 
-    const countryName = useMemo(() => {
+  const countryName = useMemo(() => {
       const features = countriesGeo?.features || [];
       const f = features.find(
         (x) => String(x?.properties?.[ISO_PROP] || "").trim().toUpperCase() === iso3Upper
@@ -137,8 +137,18 @@ export default function DashboardPage() {
       return f?.properties?.[NAME_PROP] || iso3Upper;
     }, [countriesGeo, iso3Upper]);
 
-    const countryDemoRows = hasCountry ? byIso3[iso3Upper] || [] : [];
-    const demoByYear = useMemo(() => {
+  const countryDemoRows = hasCountry ? byIso3[iso3Upper] || [] : [];
+  const countryIsoSet = useMemo(() => {
+    const set = new Set();
+    const features = countriesGeo?.features || [];
+    for (const f of features) {
+      const code = String(f?.properties?.[ISO_PROP] || "").trim().toUpperCase();
+      if (code) set.add(code);
+    }
+    return set;
+  }, [countriesGeo]);
+
+  const demoByYear = useMemo(() => {
       const out = Object.create(null);
       for (const r of countryDemoRows) out[r.year] = r;
       return out;
@@ -170,14 +180,66 @@ export default function DashboardPage() {
       [filteredDemoYears, demoByYear]
     );
 
-    const populationSeries = useMemo(
+  const populationSeries = useMemo(
       () =>
         filteredDemoYears.map((y) => ({
           year: y,
           value: safeNum(demoByYear?.[y]?.population),
         })),
-      [filteredDemoYears, demoByYear]
-    );
+    [filteredDemoYears, demoByYear]
+  );
+
+  const avgSeriesByMetric = useMemo(() => {
+    const buckets = {
+      pop_growth: Object.create(null),
+      life_expectancy: Object.create(null),
+      population: Object.create(null),
+    };
+
+    for (const iso of countryIsoSet) {
+      const rows = byIso3?.[iso] || [];
+      for (const r of rows) {
+        const y = Number(r.year);
+        if (!Number.isFinite(y) || y < YEAR_MIN || y > YEAR_MAX) continue;
+
+        const vGrowth = safeNum(r.pop_growth);
+        if (vGrowth !== null) {
+          buckets.pop_growth[y] ??= { sum: 0, count: 0 };
+          buckets.pop_growth[y].sum += vGrowth;
+          buckets.pop_growth[y].count += 1;
+        }
+
+        const vLife = safeNum(r.life_expectancy);
+        if (vLife !== null) {
+          buckets.life_expectancy[y] ??= { sum: 0, count: 0 };
+          buckets.life_expectancy[y].sum += vLife;
+          buckets.life_expectancy[y].count += 1;
+        }
+
+        const vPop = safeNum(r.population);
+        if (vPop !== null) {
+          buckets.population[y] ??= { sum: 0, count: 0 };
+          buckets.population[y].sum += vPop;
+          buckets.population[y].count += 1;
+        }
+      }
+    }
+
+    const toSeries = (metricKey) =>
+      filteredDemoYears.map((y) => {
+        const b = buckets[metricKey][y];
+        return {
+          year: y,
+          value: b && b.count > 0 ? b.sum / b.count : null,
+        };
+      });
+
+    return {
+      pop_growth: toSeries("pop_growth"),
+      life_expectancy: toSeries("life_expectancy"),
+      population: toSeries("population"),
+    };
+  }, [countryIsoSet, byIso3, filteredDemoYears]);
 
     const loading = ihmeLoading || demoLoading;
     const error = [ihmeError, demoError].filter(Boolean).join(" ");
@@ -200,11 +262,13 @@ export default function DashboardPage() {
           onDiseaseChange={setSelectedDisease}
           burdenMetric={burdenMetric}
           onMetricChange={setBurdenMetric}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
           rangeWidth={effectiveRangeWidth}
           minYear={minYear}
           maxYear={maxYear}
           onRangeWidthChange={(w) => {
-            const widthMax = Math.max(1, Math.min(64, maxYear - minYear));
+            const widthMax = Math.max(1, maxYear - minYear);
             const nextW = clamp(w, 1, widthMax);
             setRangeWidth(nextW);
             setRangeAnchorEnd((prev) => clamp(prev, minYear + nextW, maxYear));
@@ -247,6 +311,7 @@ export default function DashboardPage() {
             title="Population Growth Rate (%)"
             subtitle="Annual growth rate over time"
             series={growthSeries}
+            referenceSeries={avgSeriesByMetric.pop_growth}
             rangeStart={rangeStart}
             rangeEnd={rangeEnd}
             hoverYear={hoverYear}
@@ -260,6 +325,7 @@ export default function DashboardPage() {
             title="Life Expectancy (Years)"
             subtitle="Before / during / after outbreak patterns"
             series={lifeSeries}
+            referenceSeries={avgSeriesByMetric.life_expectancy}
             rangeStart={rangeStart}
             rangeEnd={rangeEnd}
             hoverYear={hoverYear}
@@ -273,6 +339,7 @@ export default function DashboardPage() {
             title="Population"
             subtitle="Country population trajectory"
             series={populationSeries}
+            referenceSeries={avgSeriesByMetric.population}
             rangeStart={rangeStart}
             rangeEnd={rangeEnd}
             hoverYear={hoverYear}

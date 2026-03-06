@@ -560,13 +560,17 @@ button:hover,
 
 .dashControls {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(130px, 0.9fr) minmax(120px, 0.8fr) minmax(220px, 1.3fr);
   gap: 5px;
 }
 
 .dashControl {
   display: grid;
   gap: 3px;
+}
+
+.dashControlCompact {
+  max-width: 190px;
 }
 
 .dashYearControl {
@@ -663,6 +667,12 @@ button:hover,
   color: var(--muted);
 }
 
+.dashChartStatAvg {
+  margin-top: 3px;
+  font-size: 11px;
+  color: rgba(100, 116, 139, 0.95);
+}
+
 .dashChartSvg {
   width: 100%;
   height: 100%;
@@ -691,6 +701,16 @@ button:hover,
   stroke-dasharray: 2 4;
 }
 
+.dashAvgLine {
+  stroke: rgba(107, 114, 128, 0.9);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+
+.dashWindowFill {
+  fill: rgba(37, 99, 235, 0.14);
+}
+
 .dashTickText {
   font-size: 10px;
   fill: rgba(15, 23, 42, 0.72);
@@ -716,6 +736,23 @@ button:hover,
   color: var(--muted);
 }
 
+.dashLinkedHint {
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(15, 23, 42, 0.86);
+}
+
+.dashLinkedSwatch {
+  width: 14px;
+  height: 8px;
+  border-radius: 3px;
+  background: rgba(37, 99, 235, 0.14);
+  border: 1px solid rgba(37, 99, 235, 0.45);
+}
+
 .dashRangeSliderWrap {
   position: relative;
   padding-top: 14px;
@@ -737,15 +774,21 @@ button:hover,
 }
 
 .dashHeaderCard .lbl {
-  font-size: 11px;
+  font-size: 10px;
   min-width: 0;
 }
 
 .dashHeaderCard select,
 .dashHeaderCard .dashToggle {
-  min-height: 30px;
-  padding-top: 5px;
-  padding-bottom: 5px;
+  min-height: 28px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: 12px;
+}
+
+.dashHeaderCard .dashToggle {
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
 .dashEmpty {

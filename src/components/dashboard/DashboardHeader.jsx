@@ -9,12 +9,14 @@ export default function DashboardHeader({
     onDiseaseChange,
     burdenMetric,
     onMetricChange,
+    rangeStart,
+    rangeEnd,
     rangeWidth,
     minYear,
     maxYear,
     onRangeWidthChange,
 }) {
-  const maxWidth = Math.max(1, Math.min(64, maxYear - minYear));
+  const maxWidth = Math.max(1, maxYear - minYear);
   const bubbleLeftPct =
     maxWidth <= 1 ? 0 : ((rangeWidth - 1) / (maxWidth - 1)) * 100;
   return (
@@ -36,7 +38,7 @@ export default function DashboardHeader({
       </div>
 
       <div className="dashControls">
-        <div className="dashControl">
+        <div className="dashControl dashControlCompact">
           <label className="lbl">Disease</label>
           <select
             value={selectedDisease}
@@ -50,7 +52,7 @@ export default function DashboardHeader({
           </select>
         </div>
 
-        <div className="dashControl">
+        <div className="dashControl dashControlCompact">
           <label className="lbl">Burden metric</label>
           <div className="dashMetricSwitch">
             <button
@@ -89,7 +91,6 @@ export default function DashboardHeader({
             <span>1</span>
             <span>{maxWidth}</span>
           </div>
-          <div className="small">Hover chart to move this fixed-width range across all views.</div>
         </div>
       </div>
     </section>
