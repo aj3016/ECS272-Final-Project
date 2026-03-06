@@ -11,6 +11,33 @@ const DISEASE_COLORS = {
   "Dengue": "#a44bed",
 };
 
+const ANNOTATIONS = [
+  { 
+    year: 2000, 
+    text: "Measles Vaccine Coverage Improves",
+    disease: "Measles",
+    yOffset: 50
+  },
+  { 
+    year: 2004, 
+    text: "HIV/AIDS Peak", 
+    disease: "HIV/AIDS",
+    yOffset: 20 // Highest
+  },
+  { 
+    year: 2014, 
+    text: "Ebola Outbreak", 
+    disease: "Ebola",
+    yOffset: 70 // Middle
+  },
+  { 
+    year: 2021, 
+    text: "COVID-19 Spike", 
+    disease: "COVID-19",
+    yOffset: 20 // Lowest
+  }
+];
+
 export default function StreamGraph({
   onDiseaseSelect = null,
   diseases = null,
@@ -249,6 +276,41 @@ export default function StreamGraph({
       .attr("transform", `translate(0,${height - margin.bottom})`)
       .call(d3.axisBottom(x).ticks(10).tickFormat(d3.format("d")))
       .attr("color", "#777");
+
+    // --- ANNOTATIONS LAYER ---
+const annotationGroup = svg.append("g").attr("class", "annotations").style("pointer-events", "none");
+
+ANNOTATIONS.forEach(ann => {
+  // Only show annotation if the disease is currently in the filtered list
+  if (diseases && !diseases.includes(ann.disease)) return;
+
+  const xPos = x(ann.year);
+  
+  // 1. Draw the Vertical Marker
+  annotationGroup.append("line")
+    .attr("x1", xPos)
+    .attr("x2", xPos)
+    .attr("y1", margin.top)
+    .attr("y2", height - margin.bottom)
+    .attr("stroke", "#333")
+    .attr("stroke-width", 1)
+    .attr("stroke-dasharray", "4,4")
+    .attr("opacity", 0.4);
+
+  // 2. Add the Text Label
+  annotationGroup.append("text")
+    .attr("x", xPos)
+    .attr("y", margin.top + ann.yOffset) 
+    .attr("text-anchor", (ann.year <= 2000 || ann.year > 2018) ? "end" : "start") 
+    .attr("dx", (ann.year <= 2000 || ann.year > 2018) ? -15 : 15)
+    .style("font-size", "12px")
+    .style("font-weight", "bold")
+    .style("fill", "#222")
+    .style("paint-order", "stroke")
+    .style("stroke", "#fff")
+    .style("stroke-width", "4px")
+    .text(ann.text);
+  });
 
     return () => {
       window.removeEventListener("hoverYear", handleExternalHover);
