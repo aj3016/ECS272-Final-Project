@@ -23,7 +23,7 @@ export default function AppLayout() {
     if (loc.pathname.startsWith("/globe"))
       return "Drag to rotate • Hover for values • Click a country → Details";
     if (loc.pathname.startsWith("/dashboard"))
-      return "Country-level drilldown dashboard (coming soon)";
+      return "Compare disease burden vs demographic trends • Hover charts to sync year";
     return "";
   }, [loc.pathname]);
 

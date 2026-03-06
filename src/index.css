@@ -495,7 +495,335 @@ button:hover,
 
 .dashboardCanvas {
   height: calc(100vh - 58px - 24px - 64px);
-  padding: 12px;
+  padding: 10px 12px;
+  overflow: hidden;
+}
+
+.dashboardContent {
+  display: grid;
+  gap: 10px;
+  height: 100%;
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.dashHeaderCard,
+.dashChartCard,
+.dashStatCard,
+.dashErrorCard,
+.dashLoadingCard {
+  background: linear-gradient(180deg, var(--card-strong), var(--card));
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashHeaderCard {
+  padding: 6px 8px;
+  display: grid;
+  gap: 4px;
+}
+
+.dashPageTitle {
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.dashTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dashCountryInline {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.88);
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  background: rgba(37, 99, 235, 0.10);
+}
+
+.dashCountryInlineWarn {
+  color: rgba(153, 27, 27, 0.95);
+  border-color: rgba(185, 28, 28, 0.30);
+  background: rgba(185, 28, 28, 0.10);
+}
+
+.dashCountryLine {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.dashControls {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.9fr) minmax(120px, 0.8fr) minmax(220px, 1.3fr);
+  gap: 5px;
+}
+
+.dashControl {
+  display: grid;
+  gap: 3px;
+}
+
+.dashControlCompact {
+  max-width: 190px;
+}
+
+.dashYearControl {
+  grid-column: span 1;
+}
+
+.dashMetricSwitch {
+  display: flex;
+  gap: 6px;
+}
+
+.dashToggle {
+  flex: 1;
+}
+
+.dashToggleOn {
+  border-color: rgba(37,99,235,0.28);
+  background: rgba(37,99,235,0.12);
+}
+
+.dashStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.dashStatCard {
+  padding: 8px;
+}
+
+.dashStatLabel {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.dashStatValue {
+  margin-top: 4px;
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.dashStatDelta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dashChartsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-height: 0;
+  height: 100%;
+}
+
+.dashChartCard {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dashChartHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex: 0 0 auto;
+}
+
+.dashChartTitle {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.dashChartStat {
+  text-align: right;
+  min-width: 170px;
+}
+
+.dashChartStatValue {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.dashChartStatDelta {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.dashChartStatAvg {
+  margin-top: 3px;
+  font-size: 11px;
+  color: rgba(100, 116, 139, 0.95);
+}
+
+.dashChartSvg {
+  width: 100%;
+  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: block;
+}
+
+.dashAxis {
+  stroke: rgba(15, 23, 42, 0.22);
+  stroke-width: 1;
+}
+
+.dashGrid {
+  stroke: rgba(15, 23, 42, 0.12);
+  stroke-width: 1;
+}
+
+.dashFocusLine {
+  stroke: rgba(15, 23, 42, 0.34);
+  stroke-dasharray: 4 4;
+}
+
+.dashRangeLine {
+  stroke: rgba(15, 23, 42, 0.28);
+  stroke-dasharray: 2 4;
+}
+
+.dashAvgLine {
+  stroke: rgba(107, 114, 128, 0.9);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+
+.dashWindowFill {
+  fill: rgba(37, 99, 235, 0.14);
+}
+
+.dashTickText {
+  font-size: 10px;
+  fill: rgba(15, 23, 42, 0.72);
+}
+
+.dashRangeText {
+  font-size: 11px;
+  fill: rgba(15, 23, 42, 0.86);
+  font-weight: 700;
+}
+
+.dashRangeBounds {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: -2px;
+}
+
+.dashRangeControlLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.dashLinkedHint {
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(15, 23, 42, 0.86);
+}
+
+.dashLinkedSwatch {
+  width: 14px;
+  height: 8px;
+  border-radius: 3px;
+  background: rgba(37, 99, 235, 0.14);
+  border: 1px solid rgba(37, 99, 235, 0.45);
+}
+
+.dashRangeSliderWrap {
+  position: relative;
+  padding-top: 14px;
+}
+
+.dashRangeValueBubble {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  padding: 1px 6px;
+  line-height: 1.3;
+  pointer-events: none;
+}
+
+.dashHeaderCard .lbl {
+  font-size: 10px;
+  min-width: 0;
+}
+
+.dashHeaderCard select,
+.dashHeaderCard .dashToggle {
+  min-height: 28px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: 12px;
+}
+
+.dashHeaderCard .dashToggle {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.dashEmpty {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.dashErrorCard,
+.dashLoadingCard {
+  padding: 10px 12px;
+}
+
+.dashInlineCardRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashErrorCard {
+  color: rgba(185, 28, 28, 0.95);
+}
+
+@media (max-width: 1040px) {
+  .dashStatsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashChartsGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .dashControls { grid-template-columns: 1fr; }
+  .dashStatsGrid { grid-template-columns: 1fr; }
 }
 
 /* ============================
