@@ -20,7 +20,7 @@ const ANNOTATIONS = [
   },
   { 
     year: 2004, 
-    text: "HIV/AIDS Peak", 
+    text: "HIV/AIDS Mortality Peak", 
     disease: "HIV/AIDS",
     yOffset: 20 // Highest
   },
@@ -32,7 +32,7 @@ const ANNOTATIONS = [
   },
   { 
     year: 2021, 
-    text: "COVID-19 Spike", 
+    text: "COVID-19 Mortality Shock", 
     disease: "COVID-19",
     yOffset: 20 // Lowest
   }
@@ -143,7 +143,11 @@ export default function StreamGraph({
       .data(layers)
       .join("path")
       .attr("class", "area-path")
-      .attr("fill", d => DISEASE_COLORS[d.key] || "#999")
+      .attr("fill", d => {
+        const c = d3.hsl(DISEASE_COLORS[d.key] || "#999");
+        c.s *= 0.85;   // reduce saturation (1 = original)
+        return c.toString();
+      })
       .attr("d", areaFlat)
       .style("cursor", "pointer")
       .on("click", (event, d) => {

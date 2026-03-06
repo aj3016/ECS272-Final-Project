@@ -22,9 +22,9 @@ export default function StreamPage() {
     >
       <StreamView
         onDiseaseSelect={(d) => {
-        setDiseaseFromStreamgraph(d);
-        navigate(`/transition?disease=${encodeURIComponent(d)}`);
-      }}
+          setDiseaseFromStreamgraph(d);
+          navigate(`/globe?disease=${encodeURIComponent(d)}`);
+        }}
       />
 
       <PopulationGrowth />
