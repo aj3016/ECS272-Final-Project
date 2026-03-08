@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { buildSparkPath } from "../../utils/sparkline";
 
 function nearestYear(series, targetYear) {
@@ -58,25 +58,40 @@ function withUnit(text, unitLabel) {
   return `${text} ${unitLabel}`;
 }
 
+function countryValueLine(year, value, formatter, unitLabel, accent) {
+  return (
+    <div>
+      {year}: <span style={{ color: accent, fontWeight: 700 }}>{withUnit(formatValue(value, formatter), unitLabel)}</span>
+    </div>
+  );
+}
+
 export default function TimeSeriesPanel({
   title,
   subtitle = "",
   series,
   referenceSeries = null,
+  contextCountry = "",
+  contextDisease = "",
   rangeStart,
   rangeEnd,
   hoverYear,
-    onHoverYear,
-    accent = "#2563eb",
-    valueFormatter,
-    unitLabel = "",
+  onHoverYear,
+  accent = "#2563eb",
+  valueFormatter,
+  unitLabel = "",
+  layout = "default",
+  enableBrush = false,
+  onBrushRangeChange = null,
 }) {
+  const isRightCompact = layout === "rightCompact";
   const w = 520;
-  const h = 220;
+  const h = isRightCompact ? 170 : 220;
   const padL = 44;
   const padR = 16;
   const padT = 16;
   const padB = 30;
+  const [dragStartYear, setDragStartYear] = useState(null);
 
   const finite = useMemo(
     () => series.filter((d) => Number.isFinite(d.year) && Number.isFinite(d.value)),
@@ -94,8 +109,14 @@ export default function TimeSeriesPanel({
     return (
       <section className="dashChartCard">
         <div className="dashChartHead">
-          <div className="dashChartTitle">{title}</div>
-          <div className="small">{subtitle}</div>
+          <div>
+            <div className="dashChartTitle">{title}</div>
+            <div className="small">{subtitle}</div>
+            <div className="dashPanelScopeRow">
+              {contextCountry ? <span className="dashPanelScopeChip">Country: {contextCountry}</span> : null}
+              {contextDisease ? <span className="dashPanelScopeChip">Disease: {contextDisease}</span> : null}
+            </div>
+          </div>
         </div>
         <div className="dashEmpty">No data in this range.</div>
       </section>
@@ -135,14 +156,156 @@ export default function TimeSeriesPanel({
       : null;
 
   const handleMove = (e) => {
-    if (!onHoverYear) return;
+    if (!onHoverYear && !enableBrush) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const t = (x - padL) / Math.max(1, rect.width - padL - padR);
     const rawYear = xMin + t * (xMax - xMin);
     const y = nearestYear(series, Math.round(rawYear));
-    onHoverYear(y);
+    onHoverYear?.(y);
+    if (enableBrush && Number.isFinite(dragStartYear) && Number.isFinite(y) && onBrushRangeChange) {
+      onBrushRangeChange(dragStartYear, y);
+    }
   };
+
+  const handleDown = (e) => {
+    if (!enableBrush) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const t = (x - padL) / Math.max(1, rect.width - padL - padR);
+    const rawYear = xMin + t * (xMax - xMin);
+    const y = nearestYear(series, Math.round(rawYear));
+    if (!Number.isFinite(y)) return;
+    setDragStartYear(y);
+    onHoverYear?.(y);
+  };
+
+  const handleUp = () => {
+    if (!enableBrush) return;
+    setDragStartYear(null);
+  };
+
+  if (isRightCompact) {
+    return (
+      <section className="dashChartCard dashChartCardCompact">
+        <div className="dashChartMainCompact">
+          <div className="dashChartMetaCompact">
+            <div className="dashChartTitle">{title}</div>
+            <div className="small">{subtitle}</div>
+            <div className="dashChartStatValue" style={{ color: accent }}>
+              {withUnit(formatDelta(rangeDelta, valueFormatter), unitLabel)}
+            </div>
+            <div className="dashChartStatDelta">
+              {countryValueLine(rangeStart, startValue, valueFormatter, unitLabel, accent)}
+              {countryValueLine(effectiveEnd, endValue, valueFormatter, unitLabel, accent)}
+            </div>
+            {referenceFinite.length ? (
+              <div className="dashChartStatAvg" style={{ color: "#6b7280" }}>
+                World avg Δ: {withUnit(formatDelta(avgDelta, valueFormatter), unitLabel)}
+              </div>
+            ) : null}
+          </div>
+
+          <svg viewBox={`0 0 ${w} ${h}`} className="dashChartSvg dashChartSvgCompact">
+            <line x1={padL} y1={h - padB} x2={w - padR} y2={h - padB} className="dashAxis" />
+            <line x1={padL} y1={padT} x2={padL} y2={h - padB} className="dashAxis" />
+
+            <line
+              x1={padL}
+              y1={(padT + h - padB) / 2}
+              x2={w - padR}
+              y2={(padT + h - padB) / 2}
+              className="dashGrid"
+            />
+
+            {referencePath ? <path d={referencePath} fill="none" className="dashAvgLine" /> : null}
+
+            <path d={path} fill="none" stroke={accent} strokeWidth="3" />
+
+            {Number.isFinite(rangeStart) && Number.isFinite(effectiveEnd) ? (
+              <rect
+                x={xScale(Math.min(rangeStart, effectiveEnd))}
+                y={padT}
+                width={Math.max(
+                  1,
+                  xScale(Math.max(rangeStart, effectiveEnd)) -
+                    xScale(Math.min(rangeStart, effectiveEnd))
+                )}
+                height={h - padT - padB}
+                className="dashWindowFill"
+              />
+            ) : null}
+
+            {Number.isFinite(rangeStart) ? (
+              <line
+                x1={xScale(rangeStart)}
+                y1={padT}
+                x2={xScale(rangeStart)}
+                y2={h - padB}
+                className="dashRangeLine"
+              />
+            ) : null}
+
+            {Number.isFinite(effectiveEnd) ? (
+              <line
+                x1={xScale(effectiveEnd)}
+                y1={padT}
+                x2={xScale(effectiveEnd)}
+                y2={h - padB}
+                className="dashFocusLine"
+              />
+            ) : null}
+
+            {point ? <circle cx={xScale(point.year)} cy={yScale(point.value)} r="4.8" fill={accent} /> : null}
+
+            <text x={padL} y={h - 3} className="dashTickText">
+              {xMin}
+            </text>
+            <text x={w - padR} y={h - 3} textAnchor="end" className="dashTickText">
+              {xMax}
+            </text>
+            <text x={padL - 6} y={padT + 4} textAnchor="end" className="dashTickText">
+              {valueFormatter ? valueFormatter(yMax) : yMax.toFixed(2)}
+            </text>
+            <text x={padL - 6} y={h - padB + 4} textAnchor="end" className="dashTickText">
+              {valueFormatter ? valueFormatter(yMin) : yMin.toFixed(2)}
+            </text>
+            <text
+              x={xScale(rangeStart)}
+              y={h - 18}
+              textAnchor="middle"
+              className="dashRangeText"
+            >
+              {rangeStart}
+            </text>
+            <text
+              x={xScale(effectiveEnd)}
+              y={h - 18}
+              textAnchor="middle"
+              className="dashRangeText"
+            >
+              {effectiveEnd}
+            </text>
+
+            <rect
+              x={padL}
+              y={padT}
+              width={w - padL - padR}
+              height={h - padT - padB}
+              fill="transparent"
+              onMouseDown={handleDown}
+              onMouseMove={handleMove}
+              onMouseUp={handleUp}
+              onMouseLeave={() => {
+                onHoverYear?.(null);
+                handleUp();
+              }}
+            />
+          </svg>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="dashChartCard">
@@ -156,16 +319,12 @@ export default function TimeSeriesPanel({
             {withUnit(formatDelta(rangeDelta, valueFormatter), unitLabel)}
           </div>
           <div className="dashChartStatDelta">
-            <div>
-              Min ({rangeStart}): {withUnit(formatValue(startValue, valueFormatter), unitLabel)}
-            </div>
-            <div>
-              Max ({effectiveEnd}): {withUnit(formatValue(endValue, valueFormatter), unitLabel)}
-            </div>
+            {countryValueLine(rangeStart, startValue, valueFormatter, unitLabel, accent)}
+            {countryValueLine(effectiveEnd, endValue, valueFormatter, unitLabel, accent)}
           </div>
           {referenceFinite.length ? (
-            <div className="dashChartStatAvg">
-              Avg Δ: {withUnit(formatDelta(avgDelta, valueFormatter), unitLabel)}
+            <div className="dashChartStatAvg" style={{ color: "#6b7280" }}>
+              World avg Δ: {withUnit(formatDelta(avgDelta, valueFormatter), unitLabel)}
             </div>
           ) : null}
         </div>
@@ -253,8 +412,13 @@ export default function TimeSeriesPanel({
           width={w - padL - padR}
           height={h - padT - padB}
           fill="transparent"
+          onMouseDown={handleDown}
           onMouseMove={handleMove}
-          onMouseLeave={() => onHoverYear?.(null)}
+          onMouseUp={handleUp}
+          onMouseLeave={() => {
+            onHoverYear?.(null);
+            handleUp();
+          }}
         />
       </svg>
     </section>

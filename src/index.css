@@ -496,14 +496,14 @@ button:hover,
 .dashboardCanvas {
   height: calc(100vh - 58px - 24px - 64px);
   padding: 10px 12px;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .dashboardContent {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-  height: 100%;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  min-height: 100%;
 }
 
 .dashHeaderCard,
@@ -546,6 +546,17 @@ button:hover,
   background: rgba(37, 99, 235, 0.10);
 }
 
+.dashTitleMetaInline {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.88);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  background: rgba(37, 99, 235, 0.10);
+  white-space: nowrap;
+}
+
 .dashCountryInlineWarn {
   color: rgba(153, 27, 27, 0.95);
   border-color: rgba(185, 28, 28, 0.30);
@@ -559,9 +570,7 @@ button:hover,
 }
 
 .dashControls {
-  display: grid;
-  grid-template-columns: minmax(130px, 0.9fr) minmax(120px, 0.8fr) minmax(220px, 1.3fr);
-  gap: 5px;
+  display: block;
 }
 
 .dashControl {
@@ -573,8 +582,45 @@ button:hover,
   max-width: 190px;
 }
 
-.dashYearControl {
-  grid-column: span 1;
+.dashScopePanel,
+.dashYearPanel {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.85),
+    rgba(248, 250, 252, 0.78)
+  );
+  padding: 8px;
+}
+
+.dashYearPanel {
+  align-content: center;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.dashScopeFixed {
+  display: grid;
+  gap: 4px;
+}
+
+.dashScopeChip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dashScopeChip strong {
+  color: var(--text);
+  font-weight: 700;
 }
 
 .dashMetricSwitch {
@@ -591,48 +637,171 @@ button:hover,
   background: rgba(37,99,235,0.12);
 }
 
-.dashStatsGrid {
+.dashSplitLayout {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: minmax(500px, 1.02fr) minmax(560px, 1.12fr);
+  gap: 12px;
+  min-height: 0;
+  align-items: start;
 }
 
-.dashStatCard {
-  padding: 8px;
+.dashLeftColumn,
+.dashRightColumn {
+  display: grid;
+  gap: 7px;
+  align-content: start;
+  min-height: 0;
 }
 
-.dashStatLabel {
-  font-size: 12px;
-  color: var(--muted);
+.dashRightColumn {
+  grid-template-columns: 1fr;
 }
 
-.dashStatValue {
-  margin-top: 4px;
-  font-size: 17px;
+.dashCountryHero,
+.dashBurdenCard,
+.dashControlsCard,
+.dashCountryInfoCard {
+  background: linear-gradient(180deg, var(--card-strong), var(--card));
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashCountryHero {
+  padding: 10px 12px;
+}
+
+.dashCountryHeroTitle {
+  font-size: 25px;
+  line-height: 1.1;
+  font-weight: 900;
+  color: var(--text);
+  letter-spacing: 0.3px;
+}
+
+.dashBurdenCard {
+  padding: 8px 10px;
+}
+
+.dashBurdenTitle {
+  font-size: 14px;
   font-weight: 900;
   color: var(--text);
 }
 
-.dashStatDelta {
-  margin-top: 4px;
-  font-size: 11px;
+.dashBurdenSummaryLine {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
   color: var(--muted);
 }
 
-.dashChartsGrid {
+.dashBurdenSummaryLine strong {
+  font-weight: 900;
+}
+
+.dashControlsCard {
+  padding: 8px 10px;
+}
+
+.dashBurdenMainChart {
+  margin-top: 6px;
+  margin-bottom: 10px;
+}
+
+.dashBurdenMainChart .dashChartCard {
+  min-height: 0;
+  height: auto;
+}
+
+.dashBurdenMainChart .dashChartSvg {
+  height: 120px;
+}
+
+.dashBurdenMainChart .dashChartHead {
+  min-height: 0;
+}
+
+.dashControlsInBurden {
+  margin-top: 12px;
+  padding: 7px;
+  border-top: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+.dashRangeBrushHint {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.dashRangePresetRow {
+  margin-top: 6px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  gap: 5px;
+}
+
+.dashRangePresetRow .dashToggle {
+  min-height: 24px;
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+.dashControlsTitle {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.dashControlsCard .dashPanelMetricSwitch {
+  margin-top: 8px;
+  margin-bottom: 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.dashChartCard {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   height: 100%;
 }
 
-.dashChartCard {
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
+.dashChartCardCompact {
+  padding: 6px 8px;
+}
+
+.dashChartMainCompact {
+  display: grid;
+  grid-template-columns: minmax(200px, 230px) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.dashChartMetaCompact .dashChartTitle {
+  min-height: auto;
+}
+
+.dashChartMetaCompact .small {
+  min-height: auto;
+  display: block;
+  -webkit-line-clamp: unset;
+}
+
+.dashChartSvgCompact {
+  height: 120px;
+}
+
+.dashChartSvgCompact .dashTickText {
+  font-size: 9px;
+}
+
+.dashChartSvgCompact .dashRangeText {
+  font-size: 9px;
 }
 
 .dashChartHead {
@@ -642,17 +811,74 @@ button:hover,
   gap: 8px;
   margin-bottom: 4px;
   flex: 0 0 auto;
+  min-height: 56px;
+}
+
+.dashChartHead > div:first-child {
+  flex: 1;
+  min-width: 0;
 }
 
 .dashChartTitle {
   font-size: 14px;
   font-weight: 800;
   color: var(--text);
+  line-height: 1.25;
+  min-height: 1.25em;
+}
+
+.dashChartHead .small {
+  margin-top: 2px;
+  line-height: 1.25;
+  min-height: 2.5em;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.dashPanelScopeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.dashPanelScopeChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.86);
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: rgba(37, 99, 235, 0.08);
 }
 
 .dashChartStat {
   text-align: right;
   min-width: 170px;
+}
+
+.dashChartStatScope {
+  margin-bottom: 4px;
+  font-size: 10px;
+  line-height: 1.3;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.72);
+}
+
+.dashPanelMetricSwitch {
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.dashPanelMetricSwitch .dashToggle {
+  min-height: 22px;
+  font-size: 11px;
+  padding: 2px 8px;
 }
 
 .dashChartStatValue {
@@ -675,9 +901,8 @@ button:hover,
 
 .dashChartSvg {
   width: 100%;
-  height: 100%;
-  flex: 1 1 auto;
-  min-height: 0;
+  height: 170px;
+  flex: 0 0 auto;
   display: block;
 }
 
@@ -730,10 +955,12 @@ button:hover,
   margin-top: -2px;
 }
 
+
 .dashRangeControlLabel {
   font-size: 10px;
   font-weight: 700;
   color: var(--muted);
+  margin-top: 2px;
 }
 
 .dashLinkedHint {
@@ -755,7 +982,7 @@ button:hover,
 
 .dashRangeSliderWrap {
   position: relative;
-  padding-top: 14px;
+  padding-top: 16px;
 }
 
 .dashRangeValueBubble {
@@ -772,6 +999,50 @@ button:hover,
   line-height: 1.3;
   pointer-events: none;
 }
+
+.dashRangeSlider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  padding: 0;
+  cursor: pointer;
+}
+
+.dashRangeSlider::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.dashRangeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 2px solid rgba(37, 99, 235, 0.88);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+}
+
+.dashRangeSlider::-moz-range-track {
+  height: 10px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.dashRangeSlider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 2px solid rgba(37, 99, 235, 0.88);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+}
+
 
 .dashHeaderCard .lbl {
   font-size: 10px;
@@ -814,16 +1085,6 @@ button:hover,
 
 .dashErrorCard {
   color: rgba(185, 28, 28, 0.95);
-}
-
-@media (max-width: 1040px) {
-  .dashStatsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dashChartsGrid { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 760px) {
-  .dashControls { grid-template-columns: 1fr; }
-  .dashStatsGrid { grid-template-columns: 1fr; }
 }
 
 /* ============================
@@ -965,4 +1226,51 @@ button:hover,
 .appShell {
   position: relative;
   z-index: 0;
+}
+
+.dashCountryInfoCard {
+  padding: 10px 12px;
+  background: linear-gradient(180deg, var(--card-strong), var(--card));
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashCountryInfoTitle {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.dashCountryInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.dashCountryInfoItem {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 7px;
+}
+
+.dashCountryInfoLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.dashCountryInfoValue {
+  margin-top: 3px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.dashCountryInfoSub {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
 }
