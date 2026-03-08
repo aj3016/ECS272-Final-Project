@@ -19,6 +19,7 @@ export default function GlobePage() {
   const {
     countriesGeo,
     valuesByMetricDiseaseYear,
+    incomeGroupByYear,
     diseases,
     years,
     loading,
@@ -192,6 +193,7 @@ export default function GlobePage() {
         year={selectedYear}
         value={tooltip.value}
         metric={metric}
+        incomeGroupByYear={incomeGroupByYear}
       />
 
       <DetailPanel

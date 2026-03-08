@@ -24,6 +24,7 @@ export default function Tooltip({
   year,
   value,
   metric,
+  incomeGroupByYear,
 }) {
   if (!visible || !feature) return null;
 
@@ -32,6 +33,8 @@ export default function Tooltip({
 
   const isZero = value === 0;
   const valueText = formatValue(value, metric);
+
+  const incomeGroup = incomeGroupByYear?.[year]?.[iso3] ?? "No data found";
 
   return (
     <div className="tooltip" style={{ left: x + 12, top: y + 12 }}>
@@ -49,6 +52,9 @@ export default function Tooltip({
           }}
         />
         {iso3} • {disease} • {year}
+      </div>
+      <div style={{ marginTop: 4 }}>
+        Income Group: <b>{incomeGroup}</b>
       </div>
       <div style={{ marginTop: 6 }}>
         {metric === "number" ? "Number" : "Rate"}:{" "}
