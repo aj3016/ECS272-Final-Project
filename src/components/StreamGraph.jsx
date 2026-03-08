@@ -236,12 +236,18 @@ export default function StreamGraph({
 
         }
 
+        window.dispatchEvent(
+          new CustomEvent("hoverDisease", { detail: { disease: d.key } })
+        );
+
       })
       .on("mouseleave", function() {
 
         svg.selectAll(".area-path")
           .style("opacity", 1)
           .attr("stroke", "none");
+
+        window.dispatchEvent(new CustomEvent("hoverDiseaseOff"));
 
       })
       .transition()
