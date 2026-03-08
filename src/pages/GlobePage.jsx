@@ -19,6 +19,7 @@ export default function GlobePage() {
   const {
     countriesGeo,
     valuesByMetricDiseaseYear,
+    incomeGroupByYear,
     diseases,
     years,
     loading,
@@ -28,7 +29,7 @@ export default function GlobePage() {
 
   const viz = useVizStore();
 
-  const { markReady } = usePageReady(); // ajinkya-change (you forgot this)
+  const { markReady } = usePageReady();
 
   const diseaseFromQuery = (sp.get("disease") || "").trim() || null;
 
@@ -37,6 +38,8 @@ export default function GlobePage() {
   const [paletteName, setPaletteName] = useState("blue");
   const [metric, setMetric] = useState("rate");
   const [spinEnabled, setSpinEnabled] = useState(true);
+
+  const [manualDisease, setManualDisease] = useState(null); 
 
   const [playing, setPlaying] = useState(false);
   const [speedMs, setSpeedMs] = useState(700);
@@ -53,29 +56,28 @@ export default function GlobePage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [clickedFeature, setClickedFeature] = useState(null);
 
-  // Determine disease selection:
   const selectedDisease = useMemo(() => {
     return (
+      manualDisease ?? 
       diseaseFromQuery ??
       viz.disease ??
       defaults.defaultDisease ??
       diseases[0] ??
       null
     );
-  }, [diseaseFromQuery, viz.disease, defaults.defaultDisease, diseases]);
+  }, [manualDisease ?? diseaseFromQuery, viz.disease, defaults.defaultDisease, diseases]);
 
   useEffect(() => {
     if (!defaults.defaultDisease) return;
     setSelectedYear((prev) => (prev ? prev : defaults.defaultYear));
   }, [defaults.defaultDisease, defaults.defaultYear]);
 
-  const ready = useMemo( // ajinkya-change (move this ABOVE any effect that uses it)
+  const ready = useMemo(
     () => !loading && !error && selectedDisease && years.length > 0,
     [loading, error, selectedDisease, years.length]
   );
 
   const { thresholds, map } = useMapboxGlobe({
-    // ajinkya-change (also return map)
     mapContainerRef,
     countriesGeo,
     valuesByMetricDiseaseYear,
@@ -97,7 +99,7 @@ export default function GlobePage() {
 
   useEffect(() => {
     if (!ready) return;
-    if (map && map.loaded()) markReady(); // ajinkya-change
+    if (map && map.loaded()) markReady();
   }, [ready, map, markReady]);
 
   const stopPlay = () => {
@@ -163,7 +165,7 @@ export default function GlobePage() {
           years={years}
           selectedDisease={selectedDisease || ""}
           selectedYear={selectedYear}
-          onDiseaseChange={(d) => setDiseaseManual(d)}
+          onDiseaseChange={(d) => {setManualDisease(d); setDiseaseManual(d);}}
           diseaseDisabled={viz.diseaseLocked || !!diseaseFromQuery}
           onYearChange={(y) => setSelectedYear(y)}
           playing={playing}
@@ -191,6 +193,7 @@ export default function GlobePage() {
         year={selectedYear}
         value={tooltip.value}
         metric={metric}
+        incomeGroupByYear={incomeGroupByYear}
       />
 
       <DetailPanel

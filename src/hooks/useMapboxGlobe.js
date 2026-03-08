@@ -70,7 +70,9 @@ export function useMapboxGlobe({
   const onLeaveRef = useRef(onLeave);
   const onCountryClickRef = useRef(onCountryClick);
 
-  const fsRafRef = useRef(null); // ajinkya-change (throttle feature-state updates)
+  const fsRafRef = useRef(null);
+
+  const lastHoverRef = useRef(null); 
 
   useEffect(() => {
     onHoverRef.current = onHover;
@@ -154,7 +156,7 @@ export function useMapboxGlobe({
     return () => {
       try {
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        if (fsRafRef.current) cancelAnimationFrame(fsRafRef.current); // ajinkya-change
+        if (fsRafRef.current) cancelAnimationFrame(fsRafRef.current);
         map.remove();
       } catch {
       } finally {
@@ -168,81 +170,98 @@ export function useMapboxGlobe({
     if (!map || !countriesGeo || !selectedDisease) return;
 
     const handleLoad = () => {
-      if (map.getSource("countries")) return;
+      const hasCountries = !!map.getSource("countries"); 
 
-      map.addSource("countries", {
-        type: "geojson",
-        data: countriesGeo,
-        promoteId: ISO_PROP,
-      });
+      if (!hasCountries) {
+        map.addSource("countries", {
+          type: "geojson",
+          data: countriesGeo,
+          promoteId: ISO_PROP,
+        });
 
-      const fillExpr = buildFillExpressionFromState(thresholds, paletteName);
+        const fillExpr = buildFillExpressionFromState(thresholds, paletteName);
 
-      map.addLayer({
-        id: "countries-fill",
-        type: "fill",
-        source: "countries",
-        paint: {
-          "fill-color": fillExpr,
-          "fill-opacity": 0.84,
-        },
-      });
+        map.addLayer({
+          id: "countries-fill",
+          type: "fill",
+          source: "countries",
+          paint: {
+            "fill-color": fillExpr,
+            "fill-opacity": 0.84,
+          },
+        });
 
-      map.addLayer({
-        id: "countries-outline",
-        type: "line",
-        source: "countries",
-        paint: {
-          "line-color": diseaseAccent(selectedDisease),
-          "line-width": 0.7,
-        },
-      });
+        map.addLayer({
+          id: "countries-outline",
+          type: "line",
+          source: "countries",
+          paint: {
+            "line-color": diseaseAccent(selectedDisease),
+            "line-width": 0.7,
+          },
+        });
 
-      map.on("mousemove", "countries-fill", (e) => {
-        map.getCanvas().style.cursor = "pointer";
-        const f = e.features?.[0];
-        if (!f) return;
+        map.on("mousemove", "countries-fill", (e) => {
+          map.getCanvas().style.cursor = "pointer";
+          const f = e.features?.[0];
+          if (!f) return;
 
-        const iso3 = (f.properties?.[ISO_PROP] || "").trim();
-        let value = undefined;
+          const iso3 = (f.properties?.[ISO_PROP] || "").trim();
+          let value = undefined;
 
-        if (iso3) {
-          const st = map.getFeatureState({ source: "countries", id: iso3 });
-          value = st?.hasValue ? st.value : undefined;
-        }
+          if (iso3) {
+            const st = map.getFeatureState({ source: "countries", id: iso3 });
+            value = st?.hasValue ? st.value : undefined;
+            lastHoverRef.current = { feature: f, point: e.point, iso3 }; 
+          }
 
-        onHoverRef.current?.({ feature: f, point: e.point, value });
-      });
+          onHoverRef.current?.({ feature: f, point: e.point, value });
+        });
 
-      map.on("mouseleave", "countries-fill", () => {
-        map.getCanvas().style.cursor = "";
-        onLeaveRef.current?.();
-      });
+        map.on("mouseleave", "countries-fill", () => {
+          map.getCanvas().style.cursor = "";
+          lastHoverRef.current = null; 
+          onLeaveRef.current?.();
+        });
 
-      map.on("click", "countries-fill", (e) => {
-        const f = e.features?.[0];
-        if (!f) return;
+        map.on("click", "countries-fill", (e) => {
+          const f = e.features?.[0];
+          if (!f) return;
 
-        userInteractingRef.current = true;
+          userInteractingRef.current = true;
 
-        try {
-          const centroid = turf.centroid(f).geometry.coordinates;
-          map.easeTo({ center: centroid, zoom: 3.2, duration: 900 });
-        } catch (err) {
-          console.warn("Could not compute centroid", err);
-        }
+          try {
+            const centroid = turf.centroid(f).geometry.coordinates;
+            map.easeTo({ center: centroid, zoom: 3.2, duration: 900 });
+          } catch (err) {
+            console.warn("Could not compute centroid", err);
+          }
 
-        const clickedIso = (f.properties?.[ISO_PROP] || "").trim();
-        if (clickedIso) {
-          map.setFilter("countries-outline", ["==", ["get", ISO_PROP], clickedIso]);
-          window.setTimeout(() => map.setFilter("countries-outline", null), 900);
-        }
+          const clickedIso = (f.properties?.[ISO_PROP] || "").trim();
+          if (clickedIso) {
+            map.setFilter("countries-outline", ["==", ["get", ISO_PROP], clickedIso]);
+            window.setTimeout(() => map.setFilter("countries-outline", null), 900);
+          }
 
-        onCountryClickRef.current?.(f);
-      });
+          onCountryClickRef.current?.(f);
+        });
 
-      scheduleFeatureStateUpdate(map); // ajinkya-change
-      startSpinLoop(map);
+        startSpinLoop(map);
+      }
+
+      map.setPaintProperty( 
+        "countries-fill",
+        "fill-color",
+        buildFillExpressionFromState(thresholds, paletteName)
+      );
+
+      map.setPaintProperty( 
+        "countries-outline",
+        "line-color",
+        diseaseAccent(selectedDisease)
+      );
+
+      scheduleFeatureStateUpdate(map); 
     };
 
     function startSpinLoop(mapInstance) {
@@ -264,8 +283,7 @@ export function useMapboxGlobe({
       rafRef.current = requestAnimationFrame(step);
     }
 
-    function scheduleFeatureStateUpdate(mapInstance) { // ajinkya-change
-      // Throttle to 1 update per animation frame
+    function scheduleFeatureStateUpdate(mapInstance) {
       if (fsRafRef.current) cancelAnimationFrame(fsRafRef.current);
 
       fsRafRef.current = requestAnimationFrame(() => {
@@ -276,7 +294,6 @@ export function useMapboxGlobe({
           selectedYear
         );
 
-        // Clear previous
         for (const iso of prevIsoSetRef.current) {
           mapInstance.setFeatureState(
             { source: "countries", id: iso },
@@ -284,7 +301,6 @@ export function useMapboxGlobe({
           );
         }
 
-        // Apply next
         const nextSet = new Set();
         for (const [iso3, val] of Object.entries(perYear)) {
           nextSet.add(iso3);
@@ -294,15 +310,24 @@ export function useMapboxGlobe({
           );
         }
         prevIsoSetRef.current = nextSet;
+
+        const h = lastHoverRef.current; 
+        if (h?.iso3) { 
+          const st = mapInstance.getFeatureState({ source: "countries", id: h.iso3 }); 
+          const value = st?.hasValue ? st.value : undefined; 
+          onHoverRef.current?.({ feature: h.feature, point: h.point, value }); 
+        }
       });
     }
 
     if (map.loaded()) handleLoad();
     else map.once("load", handleLoad);
 
-    // expose for the update effect via closure
-    // eslint-disable-next-line no-unused-vars
-    return () => {};
+    return () => { 
+      try {
+        map.off("load", handleLoad);
+      } catch {}
+    };
   }, [
     countriesGeo,
     valuesByMetricDiseaseYear,
@@ -331,7 +356,6 @@ export function useMapboxGlobe({
       diseaseAccent(selectedDisease)
     );
 
-    // ajinkya-change: throttle feature-state changes so year slider doesn't stutter
     if (fsRafRef.current) cancelAnimationFrame(fsRafRef.current);
     fsRafRef.current = requestAnimationFrame(() => {
       const perYear = getPerYear(
@@ -357,6 +381,13 @@ export function useMapboxGlobe({
         );
       }
       prevIsoSetRef.current = nextSet;
+
+      const h = lastHoverRef.current; 
+      if (h?.iso3) { 
+        const st = map.getFeatureState({ source: "countries", id: h.iso3 }); 
+        const value = st?.hasValue ? st.value : undefined; 
+        onHoverRef.current?.({ feature: h.feature, point: h.point, value }); 
+      }
     });
   }, [
     countriesGeo,

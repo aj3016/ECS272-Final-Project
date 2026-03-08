@@ -1,0 +1,43 @@
+{
+    "chart": {
+        "title": "World Bank income groups",
+        "subtitle": "The World Bank's income classification divides countries into four categories based on their gross national income (GNI) per capita. Thresholds between income groups have changed over time.",
+        "note": "Countries are grouped based on the income classification for each respective year. This means that group membership can change over time. Venezuela and Ethiopia are currently unclassified.",
+        "citation": "World Bank (2025)",
+        "originalChartUrl": "https://ourworldindata.org/grapher/world-bank-income-groups?v=1&csvType=full&useColumnShortNames=true",
+        "selection": [
+            "American Samoa",
+            "Uganda",
+            "France",
+            "Oman"
+        ]
+    },
+    "columns": {
+        "classification": {
+            "titleShort": "World Bank's income classification",
+            "titleLong": "World Bank's income classification",
+            "descriptionShort": "Income classification based on the country's income each year.",
+            "descriptionKey": [
+                "The World Bank creates a yearly classification of countries by income, for all countries with population over 30,000.",
+                "This classification stays the same throughout the World Bank's fiscal year (from July 1 to June 30) even if the income data for a country changes.",
+                "Low-income countries are those with a gross national income (GNI) per capita of $1,135 or less in 2024.",
+                "Lower-middle-income countries are those with a GNI per capita between $1,136 and $4,495 in 2024.",
+                "Upper-middle-income countries are those with a GNI per capita between $4,496 and $13,935 in 2024.",
+                "High-income countries are those with a GNI per capita of more than $13,935 in 2024.",
+                "Venezuela, classified as an upper-middle income country until the fiscal year 2021, has been unclassified since then due to the unavailability of data. Ethiopia is currently in a temporary status of unclassification."
+            ],
+            "unit": "",
+            "timespan": "1987-2024",
+            "type": "Ordinal",
+            "owidVariableId": 1077017,
+            "shortName": "classification",
+            "lastUpdated": "2025-07-01",
+            "nextUpdate": "2026-07-01",
+            "citationShort": "World Bank (2025) \u2013 with major processing by Our World in Data",
+            "citationLong": "World Bank (2025) \u2013 with major processing by Our World in Data. \u201cWorld Bank's income classification\u201d [dataset]. World Bank, \u201cIncome Classifications\u201d [original data].",
+            "fullMetadata": "https://api.ourworldindata.org/v1/indicators/1077017.metadata.json"
+        }
+    },
+    "dateDownloaded": "2026-03-06",
+    "activeFilters": {}
+}

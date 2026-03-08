@@ -5,6 +5,7 @@ import StreamPage from "./pages/StreamPage.jsx";
 import GlobePage from "./pages/GlobePage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 
+
 export default function App() {
   return (
     <Routes>

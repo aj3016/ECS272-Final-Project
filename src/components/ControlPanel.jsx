@@ -114,7 +114,7 @@ export default function ControlPanel({
         </div>
       ) : null}
 
-      <div className="row">
+      {/* <div className="row">
         <label>Shades</label>
         <select value={paletteName} onChange={(e) => onPaletteChange(e.target.value)}>
           <option value="blue">Blue</option>
@@ -122,7 +122,7 @@ export default function ControlPanel({
           <option value="purple">Purple</option>
           <option value="green">Green</option>
         </select>
-      </div>
+      </div> */}
 
       <div className="row">
         <label>Year</label>
@@ -145,7 +145,7 @@ export default function ControlPanel({
         <button onClick={onTogglePlay}>{playing ? "⏸ Pause" : "▶ Play"}</button>
       </div>
 
-      <div className="row">
+      {/* <div className="row">
         <label>Speed</label>
         <select
           value={String(speedMs)}
@@ -155,7 +155,7 @@ export default function ControlPanel({
           <option value="700">Normal</option>
           <option value="350">Fast</option>
         </select>
-      </div>
+      </div> */}
 
       <div className="row">
         <label>Auto-spin</label>

@@ -17,6 +17,12 @@ function ensurePath(obj, k1, k2) {
   return obj[k1][k2];
 }
 
+function safeText(x) {
+  if (x === undefined || x === null) return null;
+  const v = String(x).trim();
+  return v ? v : null;
+}
+
 export function useIhmeData() {
   const [countriesGeo, setCountriesGeo] = useState(null);
 
@@ -25,6 +31,7 @@ export function useIhmeData() {
     number: Object.create(null),
   }));
 
+  const [incomeGroupByYear, setIncomeGroupByYear] = useState(() => Object.create(null));
   const [diseases, setDiseases] = useState([]);
   const [years, setYears] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +52,7 @@ export function useIhmeData() {
 
         const vRate = Object.create(null);
         const vNumber = Object.create(null);
+        const vIncomeGroup = Object.create(null);
 
         const diseaseSet = new Set();
         const yearSet = new Set();
@@ -59,7 +67,6 @@ export function useIhmeData() {
           const disease = (r.cause_name || "").trim();
           if (!disease) continue;
 
-          // record disease/year even if one metric missing
           diseaseSet.add(disease);
           yearSet.add(year);
 
@@ -74,6 +81,11 @@ export function useIhmeData() {
             const bucket = ensurePath(vNumber, disease, year);
             bucket[iso3] = number;
           }
+
+          vIncomeGroup[year] ??= Object.create(null);
+          const incomeGroup = safeText(r.income_group);
+          vIncomeGroup[year][iso3] =
+            incomeGroup ?? "No data found";
         }
 
         const dList = Array.from(diseaseSet).sort();
@@ -83,6 +95,7 @@ export function useIhmeData() {
 
         setCountriesGeo(geo);
         setValuesByMetricDiseaseYear({ rate: vRate, number: vNumber });
+        setIncomeGroupByYear(vIncomeGroup);
         setDiseases(dList);
         setYears(yList);
       } catch (e) {
@@ -111,6 +124,7 @@ export function useIhmeData() {
   return {
     countriesGeo,
     valuesByMetricDiseaseYear,
+    incomeGroupByYear,
     diseases,
     years,
     loading,
