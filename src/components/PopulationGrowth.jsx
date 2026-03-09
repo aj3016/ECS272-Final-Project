@@ -1,18 +1,37 @@
 import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 
+const DISEASE_COLORS = {
+  "COVID-19": "#748f12",
+  "Influenza": "#45bf4d",
+  "HIV/AIDS": "#e7298a",
+  "Measles": "#d73027",
+  "Malaria": "#e1a33f",
+  "Ebola": "#090802",
+  "Dengue": "#a44bed",
+};
+
+const DISEASE_PEAK_WINDOWS = {
+  "COVID-19": [2020, 2022],
+  "HIV/AIDS": [1998, 2006],
+  "Ebola": [2013, 2016],
+  "Measles": [1990, 2002],
+  "Malaria": [1995, 2010],
+  "Influenza": [1980, 2023],
+  "Dengue": [2000, 2023],
+};
+
 export default function PopulationGrowth() {
   const svgRef = useRef();
   const containerRef = useRef();
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [data, setData] = useState(null);
 
-  // resize effect
   useEffect(() => {
     function handleResize() {
       if (!containerRef.current) return;
       const width = containerRef.current.clientWidth;
-      const heightFromRatio = width * 0.18;  
+      const heightFromRatio = width * 0.18;
       const maxHeight = window.innerHeight * 0.22;
       const minHeight = 120;
       const height = Math.max(minHeight, Math.min(heightFromRatio, maxHeight));
@@ -28,6 +47,7 @@ export default function PopulationGrowth() {
       const countryCol = Object.keys(raw[0]).find((k) => k.trim() === "Country Name");
       const worldRow = raw.find((d) => String(d[countryCol] ?? "").trim().toLowerCase() === "world");
       const yearKeys = Object.keys(worldRow).filter((k) => /\b(19|20)\d{2}\b/.test(k));
+
       const parsed = yearKeys
         .map((k) => ({
           year: +k.match(/\b(19|20)\d{2}\b/)[0],
@@ -35,11 +55,11 @@ export default function PopulationGrowth() {
         }))
         .filter((d) => Number.isFinite(d.year) && Number.isFinite(d.value) && d.year >= 1980 && d.year <= 2023)
         .sort((a, b) => a.year - b.year);
+
       setData(parsed);
     });
   }, []);
 
-  // drawing effect
   useEffect(() => {
     if (!data) return;
     const { width, height } = dimensions;
@@ -63,10 +83,60 @@ export default function PopulationGrowth() {
     const fmtYear = d3.format("d");
     const fmtPercent = d3.format(".2f");
 
-    const x = d3.scaleLinear().domain([1980, 2023]).range([margin.left, width - margin.right]);
-    const y = d3.scaleLinear().domain(d3.extent(data, (d) => d.value)).nice().range([height - margin.bottom, margin.top]);
+    const x = d3.scaleLinear()
+      .domain([1980, 2023])
+      .range([margin.left, width - margin.right]);
 
-    const line = d3.line().x((d) => x(d.year)).y((d) => y(d.value)).curve(d3.curveMonotoneX);
+    const y = d3.scaleLinear()
+      .domain(d3.extent(data, (d) => d.value))
+      .nice()
+      .range([height - margin.bottom, margin.top]);
+
+    const line = d3.line()
+      .x((d) => x(d.year))
+      .y((d) => y(d.value))
+      .curve(d3.curveMonotoneX);
+
+    const highlightLayer = svg.append("g");
+
+    const coloredSegment = svg.append("path")
+      .attr("fill", "none")
+      .attr("stroke-width", 4)
+      .attr("opacity", 0);
+
+    function handleDiseaseHover(event) {
+      const { disease } = event.detail;
+      const window = DISEASE_PEAK_WINDOWS[disease];
+      if (!window) return;
+
+      const [start, end] = window;
+
+      highlightLayer.selectAll("*").remove();
+
+      highlightLayer.append("rect")
+        .attr("x", x(start))
+        .attr("width", x(end) - x(start))
+        .attr("y", margin.top)
+        .attr("height", height - margin.top - margin.bottom)
+        .attr("fill", "#999")
+        .attr("opacity", 0.15);
+
+      const segmentData = data.filter(d => d.year >= start && d.year <= end);
+
+      coloredSegment
+        .datum(segmentData)
+        .attr("stroke", DISEASE_COLORS[disease])
+        .attr("d", line)
+        .attr("opacity", 1);
+    }
+
+    function handleDiseaseHoverOff() {
+      highlightLayer.selectAll("*").remove();
+      coloredSegment.attr("opacity", 0);
+    }
+
+    window.addEventListener("hoverDisease", handleDiseaseHover);
+    window.addEventListener("hoverDiseaseOff", handleDiseaseHoverOff);
 
     const cursor = svg.append("line")
       .attr("class", "year-cursor")
@@ -83,6 +153,7 @@ export default function PopulationGrowth() {
       .attr("height", height - margin.top - margin.bottom)
       .attr("fill", "transparent")
       .on("mousemove", function(event) {
+
         const [mx] = d3.pointer(event, this);
         const year = Math.round(x.invert(mx));
         const point = data.find(d => d.year === year);
@@ -94,7 +165,6 @@ export default function PopulationGrowth() {
 
         if (prev) {
           const change = point.value - prev.value;
-          // Note: In growth rate context, a negative change usually means the rate is slowing down
           trendColor = change >= 0 ? "#45bf4d" : "#d73027";
           changeFormatted = (change > 0 ? "+" : "") + fmtPercent(change) + "%";
         }
@@ -123,6 +193,7 @@ export default function PopulationGrowth() {
         tooltip.style("left", `${left}px`).style("top", `${margin.top}px`);
 
         cursor.attr("x1", x(year)).attr("x2", x(year)).attr("opacity", 1);
+
         window.dispatchEvent(new CustomEvent("hoverYear", { detail: { year, source: "pop" } }));
       })
       .on("mouseleave", () => {
@@ -140,19 +211,37 @@ export default function PopulationGrowth() {
 
     if (!svgRef.current.__animated) {
       const totalLength = path.node().getTotalLength();
-      path.attr("stroke-dasharray", totalLength).attr("stroke-dashoffset", totalLength)
-        .transition().duration(1600).ease(d3.easeCubicOut).attr("stroke-dashoffset", 0);
+
+      path.attr("stroke-dasharray", totalLength)
+        .attr("stroke-dashoffset", totalLength)
+        .transition()
+        .duration(1600)
+        .ease(d3.easeCubicOut)
+        .attr("stroke-dashoffset", 0);
+
       svgRef.current.__animated = true;
     }
 
-    svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`)
+    svg.append("g")
+      .attr("transform", `translate(0,${height - margin.bottom})`)
       .call(d3.axisBottom(x).ticks(8).tickFormat(d3.format("d")).tickSizeOuter(0));
 
-    svg.append("g").attr("transform", `translate(${margin.left},0)`)
+    svg.append("g")
+      .attr("transform", `translate(${margin.left},0)`)
       .call(d3.axisLeft(y).ticks(4).tickFormat((d) => `${d}%`));
 
-    svg.append("text").attr("x", margin.left).attr("y", 12).attr("font-size", 12).attr("font-weight", 700).attr("fill", "#111")
+    svg.append("text")
+      .attr("x", margin.left)
+      .attr("y", 12)
+      .attr("font-size", 12)
+      .attr("font-weight", 700)
+      .attr("fill", "#111")
       .text("Global Population Growth Rate (%)");
+
+    return () => {
+      window.removeEventListener("hoverDisease", handleDiseaseHover);
+      window.removeEventListener("hoverDiseaseOff", handleDiseaseHoverOff);
+    };
 
   }, [dimensions, data]);
 
