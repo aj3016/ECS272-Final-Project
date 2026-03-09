@@ -1,55 +1,123 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
+import { scaleLinear } from "d3-scale";
 import { usePageReady } from "../state/pageReady";
 import { useIhmeData, ISO_PROP, NAME_PROP } from "../hooks/useIhmeData";
 import { useCountryDemographicsData } from "../hooks/useCountryDemographicsData";
 import { diseaseAccent } from "../utils/color";
 import TimeSeriesPanel from "../components/dashboard/TimeSeriesPanel";
+import AgeStructureDonut from "../components/dashboard/AgeStructureDonut";
+import IncomeBarChart from "../components/dashboard/IncomeBarChart";
 
 const YEAR_MIN = 1980;
 const YEAR_MAX = 2023;
+const INCOME_YEAR_MIN = 1987;
 
-function safeNum(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+function safeNum(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) {
+    return null;
+  }
+  return n;
 }
 
-function compact(v) {
-  if (!Number.isFinite(v)) return "—";
-  if (Math.abs(v) >= 1e9) return `${(v / 1e9).toFixed(2)}B`;
-  if (Math.abs(v) >= 1e6) return `${(v / 1e6).toFixed(2)}M`;
-  if (Math.abs(v) >= 1e3) return `${(v / 1e3).toFixed(2)}K`;
-
-  return `${Math.round(v)}`;
+function compact(value) {
+  if (!Number.isFinite(value)) {
+    return "—";
+  }
+  if (Math.abs(value) >= 1e9) {
+    return `${(value / 1e9).toFixed(2)}B`;
+  }
+  if (Math.abs(value) >= 1e6) {
+    return `${(value / 1e6).toFixed(2)}M`;
+  }
+  if (Math.abs(value) >= 1e3) {
+    return `${(value / 1e3).toFixed(2)}K`;
+  }
+  return `${Math.round(value)}`;
 }
 
-function fmt2(v) {
-  if (!Number.isFinite(v)) return "—";
-
-  return v.toFixed(2);
+function fmt2(value) {
+  if (!Number.isFinite(value)) {
+    return "—";
+  }
+  return value.toFixed(2);
 }
 
 function nearestYear(years, target) {
-  if (!years.length || !Number.isFinite(target)) return years[0] ?? null;
+  if (!years.length || !Number.isFinite(target)) {
+    if (!years.length) {
+      return null;
+    }
+    return years[0];
+  }
+
   let best = years[0];
-  let dist = Math.abs(best - target);
-  for (const y of years) {
-    const d = Math.abs(y - target);
-    if (d < dist) {
-      best = y;
-      dist = d;
+  let bestDist = Math.abs(best - target);
+
+  for (let i = 1; i < years.length; i += 1) {
+    const year = years[i];
+    const dist = Math.abs(year - target);
+    if (dist < bestDist) {
+      best = year;
+      bestDist = dist;
     }
   }
+
   return best;
 }
 
-function clamp(v, min, max) {
-  return Math.max(min, Math.min(max, v));
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
 }
 
-function formatMetricValue(v) {
-  if (!Number.isFinite(v)) return "—";
-  return compact(v);
+function formatMetricValue(value) {
+  if (!Number.isFinite(value)) {
+    return "—";
+  }
+  return compact(value);
+}
+
+function classifyIncomeGroup(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw || raw === "no data found") {
+    return "Unclassified";
+  }
+  if (raw.includes("high")) {
+    return "High";
+  }
+  if (raw.includes("upper-middle")) {
+    return "Upper-middle";
+  }
+  if (raw.includes("lower-middle")) {
+    return "Lower-middle";
+  }
+  if (raw.includes("low")) {
+    return "Low";
+  }
+  return "Other";
+}
+
+function getCountryFeatures(countriesGeo) {
+  if (!countriesGeo || !Array.isArray(countriesGeo.features)) {
+    return [];
+  }
+  return countriesGeo.features;
+}
+
+function readMetricDiseaseYear(valuesByMetricDiseaseYear, disease) {
+  if (!valuesByMetricDiseaseYear) {
+    return {};
+  }
+  const numberMetric = valuesByMetricDiseaseYear.number;
+  if (!numberMetric) {
+    return {};
+  }
+  const diseaseMap = numberMetric[disease];
+  if (!diseaseMap) {
+    return {};
+  }
+  return diseaseMap;
 }
 
 export default function DashboardPage() {
@@ -64,6 +132,7 @@ export default function DashboardPage() {
   const {
     countriesGeo,
     valuesByMetricDiseaseYear,
+    incomeGroupByYear,
     diseases,
     years: ihmeYears,
     loading: ihmeLoading,
@@ -79,15 +148,24 @@ export default function DashboardPage() {
 
   const [selectedDisease, setSelectedDisease] = useState(diseaseFromQuery || "");
   const [rangeWidth, setRangeWidth] = useState(5);
-  const [rangeAnchorEnd, setRangeAnchorEnd] = useState(yearFromQuery ?? 2000);
+  const initialAnchorYear = Number.isFinite(yearFromQuery) ? yearFromQuery : 2000;
+  const [selectedIncomeYear, setSelectedIncomeYear] = useState(initialAnchorYear);
+  const rightCardMeasureRef = useRef(null);
+  const [rightCardHeight, setRightCardHeight] = useState(null);
+  const sliderDraggingRef = useRef(false);
+  const customSliderRef = useRef(null);
   const [hoverYear, setHoverYear] = useState(null);
 
   useEffect(() => {
-    if (diseaseFromQuery) setSelectedDisease(diseaseFromQuery);
+    if (diseaseFromQuery) {
+      setSelectedDisease(diseaseFromQuery);
+    }
   }, [diseaseFromQuery]);
 
   useEffect(() => {
-    if (!diseases.length) return;
+    if (!diseases.length) {
+      return;
+    }
     if (!selectedDisease || !diseases.includes(selectedDisease)) {
       setSelectedDisease(diseases[0]);
     }
@@ -96,156 +174,248 @@ export default function DashboardPage() {
   const allYears = useMemo(() => {
     const set = new Set([...ihmeYears, ...demoYears]);
     return Array.from(set)
-      .filter((y) => y >= YEAR_MIN && y <= YEAR_MAX)
+      .filter((year) => year >= YEAR_MIN && year <= YEAR_MAX)
       .sort((a, b) => a - b);
   }, [ihmeYears, demoYears]);
 
-  const filteredDemoYears = useMemo(
-    () => demoYears.filter((y) => y >= YEAR_MIN && y <= YEAR_MAX),
-    [demoYears]
-  );
+  const filteredDemoYears = useMemo(() => {
+    return demoYears.filter((year) => year >= YEAR_MIN && year <= YEAR_MAX);
+  }, [demoYears]);
 
   useEffect(() => {
-    if (!allYears.length) return;
+    if (!allYears.length) {
+      return;
+    }
+
     const minY = allYears[0];
     const maxY = allYears[allYears.length - 1];
     const widthMax = Math.max(1, maxY - minY);
-    const nextWidth = clamp(rangeWidth, 1, widthMax);
-    setRangeWidth(nextWidth);
-    const initialEnd = yearFromQuery ?? 2000;
-    const nextEnd = nearestYear(allYears, initialEnd);
-    setRangeAnchorEnd(clamp(nextEnd, minY + nextWidth, maxY));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allYears.length]);
+    setRangeWidth((prev) => clamp(prev, 1, widthMax));
+    setSelectedIncomeYear((prev) => {
+      let seed = 2000;
+      if (Number.isFinite(prev)) {
+        seed = prev;
+      } else if (Number.isFinite(yearFromQuery)) {
+        seed = yearFromQuery;
+      }
+      return nearestYear(allYears, seed);
+    });
+  }, [allYears, yearFromQuery]);
 
-  const minYear = allYears[0] ?? YEAR_MIN;
-  const maxYear = allYears[allYears.length - 1] ?? YEAR_MAX;
+  let minYear = YEAR_MIN;
+  let maxYear = YEAR_MAX;
+  if (allYears.length) {
+    minYear = allYears[0];
+    maxYear = allYears[allYears.length - 1];
+  }
+
   const effectiveRangeWidth = Math.max(1, Math.min(rangeWidth, Math.max(1, maxYear - minYear)));
+  const incomeAnchorYear = useMemo(() => {
+    return nearestYear(allYears, selectedIncomeYear);
+  }, [allYears, selectedIncomeYear]);
+
+  const rangeStart = useMemo(() => {
+    const maxStart = Math.max(minYear, maxYear - effectiveRangeWidth);
+    const startCandidate = clamp(incomeAnchorYear, minYear, maxStart);
+    return nearestYear(allYears, startCandidate);
+  }, [allYears, incomeAnchorYear, minYear, maxYear, effectiveRangeWidth]);
+
   const rangeEnd = useMemo(() => {
-    const end = Number.isFinite(hoverYear) ? hoverYear : rangeAnchorEnd;
-    return nearestYear(allYears, clamp(end, minYear + effectiveRangeWidth, maxYear));
-  }, [allYears, hoverYear, rangeAnchorEnd, minYear, maxYear, effectiveRangeWidth]);
-  const rangeStart = useMemo(
-    () => nearestYear(allYears, rangeEnd - effectiveRangeWidth),
-    [allYears, rangeEnd, effectiveRangeWidth]
-  );
-  const presetWidths = useMemo(
-    () => [3, 5, 10, 20].filter((w) => w <= Math.max(1, maxYear - minYear)),
-    [minYear, maxYear]
-  );
+    return nearestYear(allYears, rangeStart + effectiveRangeWidth);
+  }, [allYears, rangeStart, effectiveRangeWidth]);
+
+
+  const sliderStopWidths = useMemo(() => {
+    const widthLimit = Math.max(1, maxYear - minYear);
+    const stops = [1, 3, 5, 10, 20, 30, 43].filter((width) => width <= widthLimit);
+    if (widthLimit > 1 && !stops.includes(widthLimit)) {
+      stops.push(widthLimit);
+    }
+    return stops;
+  }, [minYear, maxYear]);
 
   const countryName = useMemo(() => {
-    const features = countriesGeo?.features || [];
-    const f = features.find(
-      (x) => String(x?.properties?.[ISO_PROP] || "").trim().toUpperCase() === iso3Upper
-    );
-    return f?.properties?.[NAME_PROP] || iso3Upper;
+    const features = getCountryFeatures(countriesGeo);
+
+    for (const feature of features) {
+      if (!feature || !feature.properties) {
+        continue;
+      }
+      const isoCode = String(feature.properties[ISO_PROP] || "").trim().toUpperCase();
+      if (isoCode === iso3Upper) {
+        const name = feature.properties[NAME_PROP];
+        return name || iso3Upper;
+      }
+    }
+
+    return iso3Upper;
   }, [countriesGeo, iso3Upper]);
 
-  const countryDemoRows = hasCountry ? byIso3[iso3Upper] || [] : [];
+  const countryDemoRows = useMemo(() => {
+    if (hasCountry && byIso3 && Array.isArray(byIso3[iso3Upper])) {
+      return byIso3[iso3Upper];
+    }
+    return [];
+  }, [hasCountry, byIso3, iso3Upper]);
+
   const countryIsoSet = useMemo(() => {
     const set = new Set();
-    const features = countriesGeo?.features || [];
-    for (const f of features) {
-      const code = String(f?.properties?.[ISO_PROP] || "").trim().toUpperCase();
-      if (code) set.add(code);
+    const features = getCountryFeatures(countriesGeo);
+
+    for (const feature of features) {
+      if (!feature || !feature.properties) {
+        continue;
+      }
+      const code = String(feature.properties[ISO_PROP] || "").trim().toUpperCase();
+      if (code) {
+        set.add(code);
+      }
     }
+
     return set;
   }, [countriesGeo]);
 
   const demoByYear = useMemo(() => {
     const out = Object.create(null);
-    for (const r of countryDemoRows) out[r.year] = r;
+    for (const row of countryDemoRows) {
+      out[row.year] = row;
+    }
     return out;
   }, [countryDemoRows]);
 
   const burdenSeries = useMemo(() => {
-    const byDiseaseYear = valuesByMetricDiseaseYear?.number?.[selectedDisease] || {};
-    return filteredDemoYears.map((y) => ({
-      year: y,
-      value: safeNum(byDiseaseYear?.[y]?.[iso3Upper]),
-    }));
+    const byDiseaseYear = readMetricDiseaseYear(valuesByMetricDiseaseYear, selectedDisease);
+
+    return filteredDemoYears.map((year) => {
+      const bucket = byDiseaseYear[year];
+      let value = null;
+      if (bucket) {
+        value = safeNum(bucket[iso3Upper]);
+      }
+      return { year, value };
+    });
   }, [valuesByMetricDiseaseYear, selectedDisease, filteredDemoYears, iso3Upper]);
 
   const burdenWorldAvgSeries = useMemo(() => {
-    const byDiseaseYear = valuesByMetricDiseaseYear?.number?.[selectedDisease] || {};
-    return filteredDemoYears.map((y) => {
-      const bucket = byDiseaseYear?.[y] || {};
+    const byDiseaseYear = readMetricDiseaseYear(valuesByMetricDiseaseYear, selectedDisease);
+
+    return filteredDemoYears.map((year) => {
+      const bucket = byDiseaseYear[year] || {};
       let sum = 0;
       let count = 0;
+
       for (const isoCode of countryIsoSet) {
-        const v = safeNum(bucket?.[isoCode]);
-        if (v !== null) {
-          sum += v;
+        const value = safeNum(bucket[isoCode]);
+        if (value !== null) {
+          sum += value;
           count += 1;
         }
       }
-      return {
-        year: y,
-        value: count > 0 ? sum / count : null,
-      };
+
+      if (count === 0) {
+        return { year, value: null };
+      }
+
+      return { year, value: sum / count };
     });
   }, [valuesByMetricDiseaseYear, selectedDisease, filteredDemoYears, countryIsoSet]);
 
-  const growthSeries = useMemo(
-    () =>
-      filteredDemoYears.map((y) => ({
-        year: y,
-        value: safeNum(demoByYear?.[y]?.pop_growth),
-      })),
-    [filteredDemoYears, demoByYear]
-  );
+  const growthSeries = useMemo(() => {
+    return filteredDemoYears.map((year) => {
+      const row = demoByYear[year];
+      const value = row ? safeNum(row.pop_growth) : null;
+      return { year, value };
+    });
+  }, [filteredDemoYears, demoByYear]);
 
-  const lifeSeries = useMemo(
-    () =>
-      filteredDemoYears.map((y) => ({
-        year: y,
-        value: safeNum(demoByYear?.[y]?.life_expectancy),
-      })),
-    [filteredDemoYears, demoByYear]
-  );
+  const lifeSeries = useMemo(() => {
+    return filteredDemoYears.map((year) => {
+      const row = demoByYear[year];
+      const value = row ? safeNum(row.life_expectancy) : null;
+      return { year, value };
+    });
+  }, [filteredDemoYears, demoByYear]);
 
-  const populationSeries = useMemo(
-    () =>
-      filteredDemoYears.map((y) => ({
-        year: y,
-        value: safeNum(demoByYear?.[y]?.population),
-      })),
-    [filteredDemoYears, demoByYear]
-  );
+  const populationSeries = useMemo(() => {
+    return filteredDemoYears.map((year) => {
+      const row = demoByYear[year];
+      const value = row ? safeNum(row.population) : null;
+      return { year, value };
+    });
+  }, [filteredDemoYears, demoByYear]);
 
-  const latestDemoYear = useMemo(
-    () => (countryDemoRows.length ? Number(countryDemoRows[countryDemoRows.length - 1]?.year) : null),
-    [countryDemoRows]
-  );
+  const latestDemoYear = useMemo(() => {
+    if (!countryDemoRows.length) {
+      return null;
+    }
+    const lastRow = countryDemoRows[countryDemoRows.length - 1];
+    return Number(lastRow.year);
+  }, [countryDemoRows]);
 
-  const latestDemo = useMemo(
-    () => (Number.isFinite(latestDemoYear) ? demoByYear?.[latestDemoYear] || null : null),
-    [demoByYear, latestDemoYear]
-  );
+  const latestDemo = useMemo(() => {
+    if (!Number.isFinite(latestDemoYear)) {
+      return null;
+    }
+    return demoByYear[latestDemoYear] || null;
+  }, [demoByYear, latestDemoYear]);
 
-  const countryInfoCards = useMemo(
-    () => [
-      {
-        label: "National Income",
-        value: "Placeholder",
-        sub: "replace with income dataset",
-      },
-      {
-        label: "Income Classification",
-        value: "Low / High (Placeholder)",
-        sub: "e.g. low income / high income",
-      },
-      {
-        label: "Age",
-        value: Number.isFinite(safeNum(latestDemo?.life_expectancy))
-          ? `${fmt2(safeNum(latestDemo?.life_expectancy))} yrs (proxy)`
-          : "Placeholder",
-        sub: Number.isFinite(latestDemoYear) ? `latest year: ${latestDemoYear}` : "latest year: —",
-      },
-    ],
-    [latestDemo, latestDemoYear]
-  );
+  const selectedAgeStructure = useMemo(() => {
+    const activeYear = Number.isFinite(hoverYear) ? hoverYear : selectedIncomeYear;
+    let best = null;
+
+    for (const row of countryDemoRows) {
+      const year = Number(row.year);
+      if (!Number.isFinite(year)) continue;
+
+      const age0to14 = safeNum(row.age_0_14_pct);
+      const age15to64 = safeNum(row.age_15_64_pct);
+      const age65plus = safeNum(row.age_65_plus_pct);
+      if (age0to14 === null || age15to64 === null || age65plus === null) continue;
+
+      const distance = Math.abs(year - activeYear);
+      if (!best || distance < best.distance || (distance === best.distance && year > best.year)) {
+        best = {
+          year,
+          age0to14,
+          age15to64,
+          age65plus,
+          population: safeNum(row.population),
+          distance,
+        };
+      }
+    }
+
+    return (
+      best || {
+        year: null,
+        age0to14: null,
+        age15to64: null,
+        age65plus: null,
+        population: safeNum(latestDemo?.population),
+      }
+    );
+  }, [countryDemoRows, latestDemo, selectedIncomeYear, hoverYear]);
+
+  const incomeBarSeries = useMemo(() => {
+    const rows = [];
+    for (const row of countryDemoRows) {
+      const year = Number(row.year);
+      if (!Number.isFinite(year) || year < INCOME_YEAR_MIN || year > YEAR_MAX) continue;
+      const value = safeNum(row.gni_per_capita);
+      if (value === null) continue;
+      const incomeGroup =
+        (incomeGroupByYear && incomeGroupByYear[year] && incomeGroupByYear[year][iso3Upper]) ||
+        "No data found";
+      rows.push({
+        year,
+        value,
+        incomeGroup,
+        classification: classifyIncomeGroup(incomeGroup),
+      });
+    }
+    rows.sort((a, b) => a.year - b.year);
+    return rows;
+  }, [countryDemoRows, incomeGroupByYear, iso3Upper]);
 
   const avgSeriesByMetric = useMemo(() => {
     const buckets = {
@@ -255,42 +425,52 @@ export default function DashboardPage() {
     };
 
     for (const isoCode of countryIsoSet) {
-      const rows = byIso3?.[isoCode] || [];
-      for (const r of rows) {
-        const y = Number(r.year);
-        if (!Number.isFinite(y) || y < YEAR_MIN || y > YEAR_MAX) continue;
+      const rows = byIso3 && Array.isArray(byIso3[isoCode]) ? byIso3[isoCode] : [];
 
-        const vGrowth = safeNum(r.pop_growth);
-        if (vGrowth !== null) {
-          buckets.pop_growth[y] ??= { sum: 0, count: 0 };
-          buckets.pop_growth[y].sum += vGrowth;
-          buckets.pop_growth[y].count += 1;
+      for (const row of rows) {
+        const year = Number(row.year);
+        if (!Number.isFinite(year) || year < YEAR_MIN || year > YEAR_MAX) {
+          continue;
         }
 
-        const vLife = safeNum(r.life_expectancy);
-        if (vLife !== null) {
-          buckets.life_expectancy[y] ??= { sum: 0, count: 0 };
-          buckets.life_expectancy[y].sum += vLife;
-          buckets.life_expectancy[y].count += 1;
+        const growthValue = safeNum(row.pop_growth);
+        if (growthValue !== null) {
+          if (!buckets.pop_growth[year]) {
+            buckets.pop_growth[year] = { sum: 0, count: 0 };
+          }
+          buckets.pop_growth[year].sum += growthValue;
+          buckets.pop_growth[year].count += 1;
         }
 
-        const vPop = safeNum(r.population);
-        if (vPop !== null) {
-          buckets.population[y] ??= { sum: 0, count: 0 };
-          buckets.population[y].sum += vPop;
-          buckets.population[y].count += 1;
+        const lifeValue = safeNum(row.life_expectancy);
+        if (lifeValue !== null) {
+          if (!buckets.life_expectancy[year]) {
+            buckets.life_expectancy[year] = { sum: 0, count: 0 };
+          }
+          buckets.life_expectancy[year].sum += lifeValue;
+          buckets.life_expectancy[year].count += 1;
+        }
+
+        const populationValue = safeNum(row.population);
+        if (populationValue !== null) {
+          if (!buckets.population[year]) {
+            buckets.population[year] = { sum: 0, count: 0 };
+          }
+          buckets.population[year].sum += populationValue;
+          buckets.population[year].count += 1;
         }
       }
     }
 
-    const toSeries = (metricKey) =>
-      filteredDemoYears.map((y) => {
-        const b = buckets[metricKey][y];
-        return {
-          year: y,
-          value: b && b.count > 0 ? b.sum / b.count : null,
-        };
+    function toSeries(metricKey) {
+      return filteredDemoYears.map((year) => {
+        const bucket = buckets[metricKey][year];
+        if (!bucket || bucket.count === 0) {
+          return { year, value: null };
+        }
+        return { year, value: bucket.sum / bucket.count };
       });
+    }
 
     return {
       pop_growth: toSeries("pop_growth"),
@@ -300,7 +480,8 @@ export default function DashboardPage() {
   }, [countryIsoSet, byIso3, filteredDemoYears]);
 
   const burdenStats = useMemo(() => {
-    const finite = burdenSeries.filter((d) => Number.isFinite(d.year) && Number.isFinite(d.value));
+    const finite = burdenSeries.filter((row) => Number.isFinite(row.year) && Number.isFinite(row.value));
+
     let peak = null;
     for (const row of finite) {
       if (!peak || row.value > peak.value) {
@@ -308,23 +489,33 @@ export default function DashboardPage() {
       }
     }
 
-    const peakYear = peak?.year ?? null;
-    const prevYear = Number.isFinite(peakYear) ? peakYear - 1 : null;
-    const nextYear = Number.isFinite(peakYear) ? peakYear + 1 : null;
-    const prevPoint = Number.isFinite(prevYear) ? finite.find((d) => d.year === prevYear) || null : null;
-    const nextPoint = Number.isFinite(nextYear) ? finite.find((d) => d.year === nextYear) || null : null;
-    const deltaFromPrev =
-      peak && prevPoint && Number.isFinite(peak.value) && Number.isFinite(prevPoint.value)
-        ? peak.value - prevPoint.value
-        : null;
-    const deltaToNext =
-      peak && nextPoint && Number.isFinite(peak.value) && Number.isFinite(nextPoint.value)
-        ? nextPoint.value - peak.value
-        : null;
+    let peakYear = null;
+    let peakValue = null;
+    let prevYear = null;
+    let nextYear = null;
+    let deltaFromPrev = null;
+    let deltaToNext = null;
+
+    if (peak) {
+      peakYear = peak.year;
+      peakValue = peak.value;
+      prevYear = peakYear - 1;
+      nextYear = peakYear + 1;
+
+      const prevPoint = finite.find((row) => row.year === prevYear) || null;
+      const nextPoint = finite.find((row) => row.year === nextYear) || null;
+
+      if (prevPoint && Number.isFinite(prevPoint.value)) {
+        deltaFromPrev = peak.value - prevPoint.value;
+      }
+      if (nextPoint && Number.isFinite(nextPoint.value)) {
+        deltaToNext = nextPoint.value - peak.value;
+      }
+    }
 
     return {
       peakYear,
-      peakValue: peak?.value ?? null,
+      peakValue,
       prevYear,
       nextYear,
       deltaFromPrev,
@@ -332,36 +523,106 @@ export default function DashboardPage() {
     };
   }, [burdenSeries]);
 
-  const worldAvgRangeDelta = useMemo(() => {
-    const start = burdenWorldAvgSeries.find((d) => d.year === rangeStart);
-    const end = burdenWorldAvgSeries.find((d) => d.year === rangeEnd);
-    if (!start || !end) return null;
-    if (!Number.isFinite(start.value) || !Number.isFinite(end.value)) return null;
-    return end.value - start.value;
-  }, [burdenWorldAvgSeries, rangeStart, rangeEnd]);
-
   const loading = ihmeLoading || demoLoading;
   const error = [ihmeError, demoError].filter(Boolean).join(" ");
   const accent = diseaseAccent(selectedDisease);
   const rangeWidthMax = Math.max(1, maxYear - minYear);
-  const bubbleLeftPct =
-    rangeWidthMax <= 1 ? 0 : ((effectiveRangeWidth - 1) / (rangeWidthMax - 1)) * 100;
+  const widthToPercentScale = useMemo(() => {
+    return scaleLinear().domain([1, rangeWidthMax]).range([0, 100]).clamp(true);
+  }, [rangeWidthMax]);
+  const bubbleLeftPct = widthToPercentScale(effectiveRangeWidth);
+  let activeIncomeYear = selectedIncomeYear;
+  if (Number.isFinite(hoverYear)) {
+    activeIncomeYear = hoverYear;
+  }
 
   const { markReady } = usePageReady();
   useEffect(() => {
-    if (!loading) markReady();
+    if (!loading) {
+      markReady();
+    }
   }, [loading, markReady]);
 
-  const applyRangeWindow = (yearA, yearB) => {
-    if (!Number.isFinite(yearA) || !Number.isFinite(yearB)) return;
-    const start = Math.min(yearA, yearB);
-    const end = Math.max(yearA, yearB);
-    const nextW = clamp(end - start, 1, rangeWidthMax);
-    const nextEnd = clamp(end, minYear + nextW, maxYear);
-    setRangeWidth(nextW);
-    setRangeAnchorEnd(nextEnd);
+  useEffect(() => {
+    const node = rightCardMeasureRef.current;
+    if (!node) {
+      return undefined;
+    }
+
+    const readHeight = () => {
+      const next = Math.round(node.getBoundingClientRect().height);
+      if (next > 0) {
+        setRightCardHeight(next);
+      }
+    };
+
+    readHeight();
+
+    const observer = new ResizeObserver(readHeight);
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [hasCountry, loading]);
+
+  function applyRangeWindow(yearA, yearB) {
+    if (!Number.isFinite(yearA) && !Number.isFinite(yearB)) {
+      return;
+    }
+
+    let pointerYear = yearA;
+    if (Number.isFinite(yearB)) {
+      pointerYear = yearB;
+    }
+    const maxStart = Math.max(minYear, maxYear - effectiveRangeWidth);
+    const nextStart = clamp(pointerYear, minYear, maxStart);
+    setSelectedIncomeYear(nextStart);
     setHoverYear(null);
-  };
+  }
+
+  const updateRangeWidthFromClientX = useCallback(
+    (clientX) => {
+      const sliderNode = customSliderRef.current;
+      if (!sliderNode) {
+        return;
+      }
+      const rect = sliderNode.getBoundingClientRect();
+      if (rect.width <= 0) {
+        return;
+      }
+      const pxToWidthScale = scaleLinear().domain([rect.left, rect.right]).range([1, rangeWidthMax]).clamp(true);
+      const nextWidth = clamp(Math.round(pxToWidthScale(clientX)), 1, rangeWidthMax);
+      setRangeWidth(nextWidth);
+      setHoverYear(null);
+    },
+    [rangeWidthMax]
+  );
+
+  const handleSliderKeyDown = useCallback(
+    (event) => {
+      let nextWidth = effectiveRangeWidth;
+      if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
+        nextWidth = effectiveRangeWidth - 1;
+      } else if (event.key === "ArrowRight" || event.key === "ArrowUp") {
+        nextWidth = effectiveRangeWidth + 1;
+      } else if (event.key === "PageDown") {
+        nextWidth = effectiveRangeWidth - 5;
+      } else if (event.key === "PageUp") {
+        nextWidth = effectiveRangeWidth + 5;
+      } else if (event.key === "Home") {
+        nextWidth = 1;
+      } else if (event.key === "End") {
+        nextWidth = rangeWidthMax;
+      } else {
+        return;
+      }
+
+      event.preventDefault();
+      nextWidth = clamp(nextWidth, 1, rangeWidthMax);
+      setRangeWidth(nextWidth);
+      setHoverYear(null);
+    },
+    [effectiveRangeWidth, rangeWidthMax]
+  );
 
   return (
     <div className="dashboardWrap">
@@ -384,61 +645,33 @@ export default function DashboardPage() {
             <section className="dashLeftColumn">
               <section className="dashCountryHero">
                 <div className="dashCountryHeroTitle">{countryName}</div>
-                <div className="dashCountryInfoTitle">Country Info (Placeholder)</div>
-                <div className="dashCountryInfoGrid">
-                  {countryInfoCards.map((item) => (
-                    <article key={item.label} className="dashCountryInfoItem">
-                      <div className="dashCountryInfoLabel">{item.label}</div>
-                      <div className="dashCountryInfoValue">{item.value}</div>
-                      <div className="dashCountryInfoSub">{item.sub}</div>
-                    </article>
-                  ))}
+                {/* <div className="dashCountryInfoTitle">Country Info</div> */}
+                <div className="dashCountryInfoLayout">
+                  <div className="dashCountryInfoGrid dashCountryInfoGridLeft">
+                    <IncomeBarChart
+                      series={incomeBarSeries}
+                      selectedYear={activeIncomeYear}
+                      onSelectYear={setSelectedIncomeYear}
+                    />
+                  </div>
+
+                  <div className="dashCountryInfoAgePane">
+                    <AgeStructureDonut
+                      year={selectedAgeStructure.year}
+                      population={selectedAgeStructure.population}
+                      age0to14={selectedAgeStructure.age0to14}
+                      age15to64={selectedAgeStructure.age15to64}
+                      age65plus={selectedAgeStructure.age65plus}
+                    />
+                  </div>
                 </div>
               </section>
 
               <section className="dashBurdenCard">
-                <div className="dashBurdenTitle">Disease burden — {selectedDisease}</div>
-                <div className="dashBurdenSummaryLine">
-                  <span>
-                    Peak {Number.isFinite(burdenStats.peakYear) ? burdenStats.peakYear : "—"}:{" "}
-                    <strong style={{ color: accent }}>
-                      {formatMetricValue(burdenStats.peakValue)}
-                    </strong>
-                  </span>
-                  <span>
-                    Δ prev:{" "}
-                    <strong style={{ color: accent }}>
-                      {Number.isFinite(burdenStats.deltaFromPrev)
-                        ? `${burdenStats.deltaFromPrev > 0 ? "+" : ""}${formatMetricValue(
-                            burdenStats.deltaFromPrev
-                          )}`
-                        : "—"}
-                    </strong>
-                  </span>
-                  <span>
-                    Δ next:{" "}
-                    <strong style={{ color: accent }}>
-                      {Number.isFinite(burdenStats.deltaToNext)
-                        ? `${burdenStats.deltaToNext > 0 ? "+" : ""}${formatMetricValue(
-                            burdenStats.deltaToNext
-                          )}`
-                        : "—"}
-                    </strong>
-                  </span>
-                  <span style={{ color: "#6b7280" }}>
-                    World avg Δ window:{" "}
-                    <strong style={{ color: "#6b7280" }}>
-                      {Number.isFinite(worldAvgRangeDelta)
-                        ? `${worldAvgRangeDelta > 0 ? "+" : ""}${formatMetricValue(worldAvgRangeDelta)}`
-                        : "—"}
-                    </strong>
-                  </span>
-                </div>
-
-                <div className="dashBurdenMainChart">
+                <div className="dashBurdenMainChart" style={rightCardHeight ? { height: `${rightCardHeight}px` } : undefined}>
                   <TimeSeriesPanel
-                    title="Disease burden (Number)"
-                    subtitle={`${selectedDisease} in ${countryName}`}
+                    title={`${selectedDisease} in ${countryName}`}
+                    // subtitle={`${selectedDisease} in ${countryName}`}
                     series={burdenSeries}
                     referenceSeries={burdenWorldAvgSeries}
                     rangeStart={rangeStart}
@@ -451,6 +684,30 @@ export default function DashboardPage() {
                     layout="rightCompact"
                     enableBrush
                     onBrushRangeChange={applyRangeWindow}
+                    compactFooter={
+                      <div className="dashChartStatDelta dashChartStatDeltaCompactExtra">
+                        <div>
+                          Peak {Number.isFinite(burdenStats.peakYear) ? burdenStats.peakYear : "—"}:{" "}
+                          <span style={{ color: accent, fontWeight: 700 }}>{formatMetricValue(burdenStats.peakValue)}</span>
+                        </div>
+                        <div>
+                          Δ prev:{" "}
+                          <span style={{ color: accent, fontWeight: 700 }}>
+                            {Number.isFinite(burdenStats.deltaFromPrev)
+                              ? `${burdenStats.deltaFromPrev > 0 ? "+" : ""}${formatMetricValue(burdenStats.deltaFromPrev)}`
+                              : "—"}
+                          </span>
+                        </div>
+                        <div>
+                          Δ next:{" "}
+                          <span style={{ color: accent, fontWeight: 700 }}>
+                            {Number.isFinite(burdenStats.deltaToNext)
+                              ? `${burdenStats.deltaToNext > 0 ? "+" : ""}${formatMetricValue(burdenStats.deltaToNext)}`
+                              : "—"}
+                          </span>
+                        </div>
+                      </div>
+                    }
                   />
                 </div>
 
@@ -458,121 +715,144 @@ export default function DashboardPage() {
                   <div className="dashControlsTitle">Range width</div>
                   <div className="dashRangeBrushHint">Drag on Disease burden chart to set window</div>
 
-                  <div className="dashRangePresetRow">
-                    {presetWidths.map((w) => (
-                      <button
-                        key={w}
-                        type="button"
-                        className={effectiveRangeWidth === w ? "dashToggle dashToggleOn" : "dashToggle"}
-                        onClick={() => {
-                          const nextW = clamp(w, 1, rangeWidthMax);
-                          setRangeWidth(nextW);
-                          setRangeAnchorEnd((prev) => clamp(prev, minYear + nextW, maxYear));
-                          setHoverYear(null);
-                        }}
-                      >
-                        {w}y
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      className={
-                        effectiveRangeWidth === rangeWidthMax ? "dashToggle dashToggleOn" : "dashToggle"
-                      }
-                      onClick={() => {
-                        setRangeWidth(rangeWidthMax);
-                        setRangeAnchorEnd(maxYear);
-                        setHoverYear(null);
-                      }}
-                    >
-                      Full
-                    </button>
-                  </div>
-
-                  <div className="dashControl dashYearPanel">
-                    <div className="dashRangeControlLabel">Range width (years)</div>
-                    <div className="dashRangeSliderWrap">
-                      <div className="dashRangeValueBubble" style={{ left: `${bubbleLeftPct}%` }}>
-                        {effectiveRangeWidth}
+                  <div className="dashRangeInlineControl">
+                    <div className="dashRangeSliderUnified">
+                      <div className="dashRangeSliderInline">
+                        <div className="dashRangeSliderWrap">
+                          <div className="dashRangeValueBubble" style={{ left: `${bubbleLeftPct}%` }}>
+                            {effectiveRangeWidth}
+                          </div>
+                          <div
+                            ref={customSliderRef}
+                            className="dashCustomSlider"
+                            role="slider"
+                            tabIndex={0}
+                            aria-label="Range width"
+                            aria-valuemin={1}
+                            aria-valuemax={rangeWidthMax}
+                            aria-valuenow={effectiveRangeWidth}
+                            onKeyDown={handleSliderKeyDown}
+                            onPointerDown={(event) => {
+                              event.preventDefault();
+                              sliderDraggingRef.current = true;
+                              event.currentTarget.setPointerCapture(event.pointerId);
+                              updateRangeWidthFromClientX(event.clientX);
+                            }}
+                            onPointerMove={(event) => {
+                              if (!sliderDraggingRef.current) {
+                                return;
+                              }
+                              updateRangeWidthFromClientX(event.clientX);
+                            }}
+                            onPointerUp={(event) => {
+                              sliderDraggingRef.current = false;
+                              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                                event.currentTarget.releasePointerCapture(event.pointerId);
+                              }
+                            }}
+                            onPointerCancel={(event) => {
+                              sliderDraggingRef.current = false;
+                              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                                event.currentTarget.releasePointerCapture(event.pointerId);
+                              }
+                            }}
+                          >
+                            <div className="dashCustomSliderTrack" />
+                            <div className="dashCustomSliderFill" style={{ width: `${bubbleLeftPct}%` }} />
+                            <div className="dashCustomSliderThumb" style={{ left: `${bubbleLeftPct}%` }} />
+                          </div>
+                          <div className="dashRangeScale" aria-hidden="true">
+                            {sliderStopWidths.map((width, index) => {
+                              const leftPct = widthToPercentScale(width);
+                              const label = `${width}`;
+                              const isFirst = index === 0;
+                              const isLast = index === sliderStopWidths.length - 1;
+                              const prevWidth = sliderStopWidths[index - 1];
+                              const nextWidth = sliderStopWidths[index + 1];
+                              const prevPct = Number.isFinite(prevWidth) ? widthToPercentScale(prevWidth) : Number.NEGATIVE_INFINITY;
+                              const nextPct = Number.isFinite(nextWidth) ? widthToPercentScale(nextWidth) : Number.POSITIVE_INFINITY;
+                              const crowded = leftPct - prevPct < 7 || nextPct - leftPct < 7;
+                              const showLabel = isFirst || isLast || !crowded;
+                              let itemTransform = "translateX(-50%)";
+                              if (isFirst) {
+                                itemTransform = "translateX(0)";
+                              } else if (isLast) {
+                                itemTransform = "translateX(-100%)";
+                              }
+                              return (
+                                <div
+                                  key={`stop-${width}`}
+                                  className="dashRangeScaleItem"
+                                  style={{ left: `${leftPct}%`, transform: itemTransform }}
+                                >
+                                  <span className="dashRangeScaleTick" />
+                                  {showLabel ? <span className="dashRangeScaleLabel">{label}</span> : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
-                      <input
-                        type="range"
-                        min={1}
-                        max={rangeWidthMax}
-                        step={1}
-                        value={effectiveRangeWidth}
-                        className="dashRangeSlider"
-                        style={{
-                          background: `linear-gradient(90deg, rgba(37,99,235,0.88) 0%, rgba(37,99,235,0.88) ${bubbleLeftPct}%, rgba(148,163,184,0.30) ${bubbleLeftPct}%, rgba(148,163,184,0.30) 100%)`,
-                        }}
-                        onChange={(e) => {
-                          const nextW = clamp(Number(e.target.value), 1, rangeWidthMax);
-                          setRangeWidth(nextW);
-                          setRangeAnchorEnd((prev) => clamp(prev, minYear + nextW, maxYear));
-                          setHoverYear(null);
-                        }}
-                      />
-                    </div>
-                    <div className="dashRangeBounds">
-                      <span>1</span>
-                      <span>{rangeWidthMax}</span>
                     </div>
                   </div>
                 </section>
               </section>
             </section>
 
-            <section className="dashRightColumn">
-              <TimeSeriesPanel
-                title="Population Growth Rate (%)"
-                subtitle="Annual growth rate over time"
-                series={growthSeries}
-                referenceSeries={avgSeriesByMetric.pop_growth}
-                contextCountry={hasCountry ? `${countryName} (${iso3Upper})` : "Not selected"}
-                contextDisease={selectedDisease}
-                rangeStart={rangeStart}
-                rangeEnd={rangeEnd}
-                hoverYear={hoverYear}
-                onHoverYear={setHoverYear}
-                accent="#0f766e"
-                valueFormatter={fmt2}
-                unitLabel="pp"
-                layout="rightCompact"
-              />
+            <section className="dashRightColumnShell">
+              <div className="dashRightColumn">
+                <TimeSeriesPanel
+                  title="Population Growth Rate (%)"
+                  subtitle="Annual growth rate over time"
+                  series={growthSeries}
+                  referenceSeries={avgSeriesByMetric.pop_growth}
+                  contextCountry={hasCountry ? `${countryName} (${iso3Upper})` : "Not selected"}
+                  contextDisease={selectedDisease}
+                  rangeStart={rangeStart}
+                  rangeEnd={rangeEnd}
+                  hoverYear={hoverYear}
+                  onHoverYear={setHoverYear}
+                  accent="#0f766e"
+                  valueFormatter={fmt2}
+                  unitLabel="pp"
+                  layout="rightCompact"
+                  panelRef={rightCardMeasureRef}
+                />
 
-              <TimeSeriesPanel
-                title="Life Expectancy (Years)"
-                subtitle="Before / during / after outbreak patterns"
-                series={lifeSeries}
-                referenceSeries={avgSeriesByMetric.life_expectancy}
-                contextCountry={hasCountry ? `${countryName} (${iso3Upper})` : "Not selected"}
-                contextDisease={selectedDisease}
-                rangeStart={rangeStart}
-                rangeEnd={rangeEnd}
-                hoverYear={hoverYear}
-                onHoverYear={setHoverYear}
-                accent="#7c3aed"
-                valueFormatter={fmt2}
-                unitLabel="years"
-                layout="rightCompact"
-              />
+                <TimeSeriesPanel
+                  title="Life Expectancy (Years)"
+                  subtitle="The average number of years a newborn is expected to live"
+                  series={lifeSeries}
+                  referenceSeries={avgSeriesByMetric.life_expectancy}
+                  contextCountry={hasCountry ? `${countryName} (${iso3Upper})` : "Not selected"}
+                  contextDisease={selectedDisease}
+                  rangeStart={rangeStart}
+                  rangeEnd={rangeEnd}
+                  hoverYear={hoverYear}
+                  onHoverYear={setHoverYear}
+                  accent="#7c3aed"
+                  valueFormatter={fmt2}
+                  unitLabel="years"
+                  layout="rightCompact"
+                />
 
-              <TimeSeriesPanel
-                title="Population"
-                subtitle="Country population trajectory"
-                series={populationSeries}
-                referenceSeries={avgSeriesByMetric.population}
-                contextCountry={hasCountry ? `${countryName} (${iso3Upper})` : "Not selected"}
-                contextDisease={selectedDisease}
-                rangeStart={rangeStart}
-                rangeEnd={rangeEnd}
-                hoverYear={hoverYear}
-                onHoverYear={setHoverYear}
-                accent="#b45309"
-                valueFormatter={compact}
-                unitLabel="people"
-                layout="rightCompact"
-              />
+                <TimeSeriesPanel
+                  title="Population"
+                  subtitle="The total number of residents"
+                  series={populationSeries}
+                  referenceSeries={avgSeriesByMetric.population}
+                  contextCountry={hasCountry ? `${countryName} (${iso3Upper})` : "Not selected"}
+                  contextDisease={selectedDisease}
+                  rangeStart={rangeStart}
+                  rangeEnd={rangeEnd}
+                  hoverYear={hoverYear}
+                  onHoverYear={setHoverYear}
+                  accent="#b45309"
+                  valueFormatter={compact}
+                  unitLabel="people"
+                  layout="rightCompact"
+                />
+              </div>
             </section>
           </div>
         ) : null}
