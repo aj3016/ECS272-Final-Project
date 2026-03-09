@@ -12,12 +12,27 @@ const METRICS = [
     file: "pop-growth-rate.csv",
   },
   {
+    key: "gni_per_capita",
+    file: "gni-per-capita.csv",
+  },
+  {
     key: "life_expectancy",
     file: "life-expectancy.csv",
   },
   {
     key: "population",
     file: "population.csv",
+  },
+];
+
+const LONG_FORMAT_METRICS = [
+  {
+    file: "AgeGroup_as_%of_total_population.csv",
+    indicatorToKey: {
+      "SP.POP.0014.TO.ZS": "age_0_14_pct",
+      "SP.POP.1564.TO.ZS": "age_15_64_pct",
+      "SP.POP.65UP.TO.ZS": "age_65_plus_pct",
+    },
   },
 ];
 
@@ -84,6 +99,46 @@ async function main() {
     if (addedCount === 0) {
       console.warn(
         `[warn] No values parsed for ${metric.key} from ${metric.file}. Check CSV format.`
+      );
+    }
+  }
+
+  for (const metricSet of LONG_FORMAT_METRICS) {
+    let rows;
+    try {
+      rows = await readCsv(metricSet.file);
+    } catch {
+      console.warn(`[warn] Missing source file for long format metrics: ${metricSet.file}`);
+      continue;
+    }
+
+    loaded.push({ key: "age_group_shares", file: metricSet.file });
+    let addedCount = 0;
+
+    for (const row of rows) {
+      const iso3 = String(row["Country Code"] || "").trim().toUpperCase();
+      if (!validIso3(iso3)) continue;
+
+      const year = Number(row.Year);
+      if (!Number.isFinite(year)) continue;
+
+      const indicatorCode = String(row["Indicator Code"] || "").trim();
+      const metricKey = metricSet.indicatorToKey[indicatorCode];
+      if (!metricKey) continue;
+
+      const value = toNumber(row.Value);
+      if (value === null) continue;
+
+      const key = `${iso3}:${year}`;
+      const entry = byIsoYear.get(key) || { iso3, year };
+      entry[metricKey] = value;
+      byIsoYear.set(key, entry);
+      addedCount += 1;
+    }
+
+    if (addedCount === 0) {
+      console.warn(
+        `[warn] No values parsed from ${metricSet.file}. Check CSV format and indicator codes.`
       );
     }
   }
