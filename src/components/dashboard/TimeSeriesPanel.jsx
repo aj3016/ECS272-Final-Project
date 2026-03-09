@@ -2,59 +2,79 @@ import React, { useMemo, useState } from "react";
 import { buildSparkPath } from "../../utils/sparkline";
 
 function nearestYear(series, targetYear) {
-    if (!Number.isFinite(targetYear)) return null;
-    let bestYear = null;
-    let bestDist = Infinity;
+  if (!Number.isFinite(targetYear)) {
+    return null;
+  }
 
-    for (const p of series) {
-      if (!Number.isFinite(p.year)) continue;
-      const dist = Math.abs(p.year - targetYear);
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestYear = p.year;
-      }
+  let bestYear = null;
+  let bestDist = Infinity;
+
+  for (const point of series) {
+    if (!Number.isFinite(point.year)) {
+      continue;
     }
+    const dist = Math.abs(point.year - targetYear);
+    if (dist < bestDist) {
+      bestDist = dist;
+      bestYear = point.year;
+    }
+  }
 
-    return bestYear;
+  return bestYear;
 }
 
 function getPointAtYear(series, year) {
-    if (!Number.isFinite(year)) return null;
-
-    for (const p of series) {
-      if (p.year === year && Number.isFinite(p.value)) return p;
-    }
-
+  if (!Number.isFinite(year)) {
     return null;
+  }
+
+  for (const point of series) {
+    if (point.year === year && Number.isFinite(point.value)) {
+      return point;
+    }
+  }
+
+  return null;
 }
 
 function valueAtNearestYear(series, year) {
+  const nearest = nearestYear(series, year);
+  if (!Number.isFinite(nearest)) {
+    return null;
+  }
 
-  const y = nearestYear(series, year);
-  if (!Number.isFinite(y)) return null;
-  const p = getPointAtYear(series, y);
+  const point = getPointAtYear(series, nearest);
+  if (!point) {
+    return null;
+  }
 
-  return p ? p.value : null;
+  return point.value;
 }
 
-function formatDelta(v, formatter) {
+function formatDelta(value, formatter) {
+  if (!Number.isFinite(value)) {
+    return "—";
+  }
 
-  if (!Number.isFinite(v)) return "—";
-  const sign = v > 0 ? "+" : "";
-  const body = formatter ? formatter(v) : v.toFixed(2);
-
+  const sign = value > 0 ? "+" : "";
+  const body = formatter ? formatter(value) : value.toFixed(2);
   return `${sign}${body}`;
 }
 
-function formatValue(v, formatter) {
-
-  if (!Number.isFinite(v)) return "—";
-  return formatter ? formatter(v) : v.toFixed(2);
+function formatValue(value, formatter) {
+  if (!Number.isFinite(value)) {
+    return "—";
+  }
+  if (formatter) {
+    return formatter(value);
+  }
+  return value.toFixed(2);
 }
 
 function withUnit(text, unitLabel) {
-
-  if (!unitLabel || text === "—") return text;
+  if (!unitLabel || text === "—") {
+    return text;
+  }
   return `${text} ${unitLabel}`;
 }
 
@@ -83,27 +103,26 @@ export default function TimeSeriesPanel({
   layout = "default",
   enableBrush = false,
   onBrushRangeChange = null,
+  compactFooter = null,
+  panelRef = null,
 }) {
   const isRightCompact = layout === "rightCompact";
-  const w = 520;
-  const h = isRightCompact ? 170 : 220;
+  const width = 530;
+  const height = isRightCompact ? 210 : 220;
   const padL = 44;
   const padR = 16;
-  const padT = 16;
-  const padB = 30;
+  const padT = isRightCompact ? 10 : 16;
+  const padB = isRightCompact ? 16 : 20;
   const [dragStartYear, setDragStartYear] = useState(null);
 
-  const finite = useMemo(
-    () => series.filter((d) => Number.isFinite(d.year) && Number.isFinite(d.value)),
-    [series]
-  );
-  const referenceFinite = useMemo(
-    () =>
-      (referenceSeries || []).filter(
-        (d) => Number.isFinite(d.year) && Number.isFinite(d.value)
-      ),
-    [referenceSeries]
-  );
+  const finite = useMemo(() => {
+    return series.filter((point) => Number.isFinite(point.year) && Number.isFinite(point.value));
+  }, [series]);
+
+  const referenceFinite = useMemo(() => {
+    const source = Array.isArray(referenceSeries) ? referenceSeries : [];
+    return source.filter((point) => Number.isFinite(point.year) && Number.isFinite(point.value));
+  }, [referenceSeries]);
 
   if (!finite.length) {
     return (
@@ -125,69 +144,117 @@ export default function TimeSeriesPanel({
 
   const xMin = Math.min(...series.map((d) => d.year));
   const xMax = Math.max(...series.map((d) => d.year));
+
   const allFinite = [...finite, ...referenceFinite];
   const dataMin = Math.min(...allFinite.map((d) => d.value));
   const dataMax = Math.max(...allFinite.map((d) => d.value));
   const yMin = Math.min(0, dataMin);
   const yMax = Math.max(0, dataMax);
 
-  const xScale = (x) =>
-    padL + ((x - xMin) / Math.max(1, xMax - xMin)) * (w - padL - padR);
+  const xScale = (x) => {
+    return padL + ((x - xMin) / Math.max(1, xMax - xMin)) * (width - padL - padR);
+  };
 
-  const yScale = (y) =>
-    h - padB - ((y - yMin) / Math.max(1e-9, yMax - yMin)) * (h - padT - padB);
+  const yScale = (y) => {
+    return height - padB - ((y - yMin) / Math.max(1e-9, yMax - yMin)) * (height - padT - padB);
+  };
 
   const path = buildSparkPath(series, xScale, yScale);
-  const referencePath =
-    referenceSeries && referenceSeries.length
-      ? buildSparkPath(referenceSeries, xScale, yScale)
-      : "";
-  const effectiveEnd = Number.isFinite(hoverYear) ? hoverYear : rangeEnd;
+
+  let referencePath = "";
+  if (referenceSeries && referenceSeries.length) {
+    referencePath = buildSparkPath(referenceSeries, xScale, yScale);
+  }
+
+  const rangeWidthYears = Math.max(1, Number(rangeEnd) - Number(rangeStart));
+  const maxStartYear = Math.max(xMin, xMax - rangeWidthYears);
+  let effectiveStart = rangeStart;
+  if (Number.isFinite(hoverYear)) {
+    const clampedHover = Math.max(xMin, Math.min(maxStartYear, hoverYear));
+    effectiveStart = nearestYear(series, clampedHover);
+  }
+
+  let effectiveEnd = rangeEnd;
+  if (Number.isFinite(effectiveStart)) {
+    effectiveEnd = nearestYear(series, effectiveStart + rangeWidthYears);
+  }
   const point = getPointAtYear(series, effectiveEnd);
-  const startValue = valueAtNearestYear(series, rangeStart);
+
+  const startValue = valueAtNearestYear(series, effectiveStart);
   const endValue = valueAtNearestYear(series, effectiveEnd);
-  const rangeDelta =
-    Number.isFinite(startValue) && Number.isFinite(endValue) ? endValue - startValue : null;
-  const avgStartValue = valueAtNearestYear(referenceSeries || [], rangeStart);
-  const avgEndValue = valueAtNearestYear(referenceSeries || [], effectiveEnd);
-  const avgDelta =
-    Number.isFinite(avgStartValue) && Number.isFinite(avgEndValue)
-      ? avgEndValue - avgStartValue
-      : null;
 
-  const handleMove = (e) => {
-    if (!onHoverYear && !enableBrush) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const t = (x - padL) / Math.max(1, rect.width - padL - padR);
-    const rawYear = xMin + t * (xMax - xMin);
-    const y = nearestYear(series, Math.round(rawYear));
-    onHoverYear?.(y);
-    if (enableBrush && Number.isFinite(dragStartYear) && Number.isFinite(y) && onBrushRangeChange) {
-      onBrushRangeChange(dragStartYear, y);
+  let rangeDelta = null;
+  if (Number.isFinite(startValue) && Number.isFinite(endValue)) {
+    rangeDelta = endValue - startValue;
+  }
+
+  const safeReferenceSeries = Array.isArray(referenceSeries) ? referenceSeries : [];
+  const avgStartValue = valueAtNearestYear(safeReferenceSeries, effectiveStart);
+  const avgEndValue = valueAtNearestYear(safeReferenceSeries, effectiveEnd);
+
+  let avgDelta = null;
+  if (Number.isFinite(avgStartValue) && Number.isFinite(avgEndValue)) {
+    avgDelta = avgEndValue - avgStartValue;
+  }
+
+  function notifyHover(year) {
+    if (typeof onHoverYear === "function") {
+      onHoverYear(year);
     }
-  };
+  }
 
-  const handleDown = (e) => {
-    if (!enableBrush) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const t = (x - padL) / Math.max(1, rect.width - padL - padR);
+  function handleMove(event) {
+    if (!onHoverYear && !enableBrush) {
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const xView = (x / Math.max(1, rect.width)) * width;
+    const t = (xView - padL) / Math.max(1, width - padL - padR);
     const rawYear = xMin + t * (xMax - xMin);
-    const y = nearestYear(series, Math.round(rawYear));
-    if (!Number.isFinite(y)) return;
-    setDragStartYear(y);
-    onHoverYear?.(y);
-  };
+    const year = nearestYear(series, Math.round(rawYear));
 
-  const handleUp = () => {
-    if (!enableBrush) return;
+    notifyHover(year);
+
+    if (enableBrush && Number.isFinite(dragStartYear) && Number.isFinite(year) && typeof onBrushRangeChange === "function") {
+      onBrushRangeChange(dragStartYear, year);
+    }
+  }
+
+  function handleDown(event) {
+    if (!enableBrush) {
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const xView = (x / Math.max(1, rect.width)) * width;
+    const t = (xView - padL) / Math.max(1, width - padL - padR);
+    const rawYear = xMin + t * (xMax - xMin);
+    const year = nearestYear(series, Math.round(rawYear));
+
+    if (!Number.isFinite(year)) {
+      return;
+    }
+
+    setDragStartYear(year);
+    notifyHover(year);
+  }
+
+  function handleUp() {
+    if (!enableBrush) {
+      return;
+    }
     setDragStartYear(null);
-  };
+  }
+
+  const windowX1 = xScale(Math.min(effectiveStart, effectiveEnd));
+  const windowX2 = xScale(Math.max(effectiveStart, effectiveEnd));
 
   if (isRightCompact) {
     return (
-      <section className="dashChartCard dashChartCardCompact">
+      <section ref={panelRef} className="dashChartCard dashChartCardCompact">
         <div className="dashChartMainCompact">
           <div className="dashChartMetaCompact">
             <div className="dashChartTitle">{title}</div>
@@ -196,7 +263,7 @@ export default function TimeSeriesPanel({
               {withUnit(formatDelta(rangeDelta, valueFormatter), unitLabel)}
             </div>
             <div className="dashChartStatDelta">
-              {countryValueLine(rangeStart, startValue, valueFormatter, unitLabel, accent)}
+              {countryValueLine(effectiveStart, startValue, valueFormatter, unitLabel, accent)}
               {countryValueLine(effectiveEnd, endValue, valueFormatter, unitLabel, accent)}
             </div>
             {referenceFinite.length ? (
@@ -204,17 +271,18 @@ export default function TimeSeriesPanel({
                 World avg Δ: {withUnit(formatDelta(avgDelta, valueFormatter), unitLabel)}
               </div>
             ) : null}
+            {compactFooter ? <div className="dashChartMetaCompactFooter">{compactFooter}</div> : null}
           </div>
 
-          <svg viewBox={`0 0 ${w} ${h}`} className="dashChartSvg dashChartSvgCompact">
-            <line x1={padL} y1={h - padB} x2={w - padR} y2={h - padB} className="dashAxis" />
-            <line x1={padL} y1={padT} x2={padL} y2={h - padB} className="dashAxis" />
+          <svg viewBox={`0 0 ${width} ${height}`} className="dashChartSvg dashChartSvgCompact">
+            <line x1={padL} y1={height - padB} x2={width - padR} y2={height - padB} className="dashAxis" />
+            <line x1={padL} y1={padT} x2={padL} y2={height - padB} className="dashAxis" />
 
             <line
               x1={padL}
-              y1={(padT + h - padB) / 2}
-              x2={w - padR}
-              y2={(padT + h - padB) / 2}
+              y1={(padT + height - padB) / 2}
+              x2={width - padR}
+              y2={(padT + height - padB) / 2}
               className="dashGrid"
             />
 
@@ -222,82 +290,62 @@ export default function TimeSeriesPanel({
 
             <path d={path} fill="none" stroke={accent} strokeWidth="3" />
 
-            {Number.isFinite(rangeStart) && Number.isFinite(effectiveEnd) ? (
+            {Number.isFinite(effectiveStart) && Number.isFinite(effectiveEnd) ? (
               <rect
-                x={xScale(Math.min(rangeStart, effectiveEnd))}
+                x={windowX1}
                 y={padT}
-                width={Math.max(
-                  1,
-                  xScale(Math.max(rangeStart, effectiveEnd)) -
-                    xScale(Math.min(rangeStart, effectiveEnd))
-                )}
-                height={h - padT - padB}
+                width={Math.max(1, windowX2 - windowX1)}
+                height={height - padT - padB}
                 className="dashWindowFill"
               />
             ) : null}
 
-            {Number.isFinite(rangeStart) ? (
+            {Number.isFinite(effectiveStart) ? (
               <line
-                x1={xScale(rangeStart)}
+                x1={xScale(effectiveStart)}
                 y1={padT}
-                x2={xScale(rangeStart)}
-                y2={h - padB}
+                x2={xScale(effectiveStart)}
+                y2={height - padB}
                 className="dashRangeLine"
               />
             ) : null}
 
             {Number.isFinite(effectiveEnd) ? (
-              <line
-                x1={xScale(effectiveEnd)}
-                y1={padT}
-                x2={xScale(effectiveEnd)}
-                y2={h - padB}
-                className="dashFocusLine"
-              />
+              <line x1={xScale(effectiveEnd)} y1={padT} x2={xScale(effectiveEnd)} y2={height - padB} className="dashFocusLine" />
             ) : null}
 
             {point ? <circle cx={xScale(point.year)} cy={yScale(point.value)} r="4.8" fill={accent} /> : null}
 
-            <text x={padL} y={h - 3} className="dashTickText">
+            <text x={padL} y={height - 3} className="dashTickText">
               {xMin}
             </text>
-            <text x={w - padR} y={h - 3} textAnchor="end" className="dashTickText">
+            <text x={width - padR} y={height - 3} textAnchor="end" className="dashTickText">
               {xMax}
             </text>
             <text x={padL - 6} y={padT + 4} textAnchor="end" className="dashTickText">
               {valueFormatter ? valueFormatter(yMax) : yMax.toFixed(2)}
             </text>
-            <text x={padL - 6} y={h - padB + 4} textAnchor="end" className="dashTickText">
+            <text x={padL - 6} y={height - padB + 4} textAnchor="end" className="dashTickText">
               {valueFormatter ? valueFormatter(yMin) : yMin.toFixed(2)}
             </text>
-            <text
-              x={xScale(rangeStart)}
-              y={h - 18}
-              textAnchor="middle"
-              className="dashRangeText"
-            >
-              {rangeStart}
+            <text x={xScale(effectiveStart)} y={height - 18} textAnchor="middle" className="dashRangeText">
+              {effectiveStart}
             </text>
-            <text
-              x={xScale(effectiveEnd)}
-              y={h - 18}
-              textAnchor="middle"
-              className="dashRangeText"
-            >
+            <text x={xScale(effectiveEnd)} y={height - 18} textAnchor="middle" className="dashRangeText">
               {effectiveEnd}
             </text>
 
             <rect
               x={padL}
               y={padT}
-              width={w - padL - padR}
-              height={h - padT - padB}
+              width={width - padL - padR}
+              height={height - padT - padB}
               fill="transparent"
               onMouseDown={handleDown}
               onMouseMove={handleMove}
               onMouseUp={handleUp}
               onMouseLeave={() => {
-                onHoverYear?.(null);
+                notifyHover(null);
                 handleUp();
               }}
             />
@@ -308,7 +356,7 @@ export default function TimeSeriesPanel({
   }
 
   return (
-    <section className="dashChartCard">
+    <section ref={panelRef} className="dashChartCard">
       <div className="dashChartHead">
         <div>
           <div className="dashChartTitle">{title}</div>
@@ -319,7 +367,7 @@ export default function TimeSeriesPanel({
             {withUnit(formatDelta(rangeDelta, valueFormatter), unitLabel)}
           </div>
           <div className="dashChartStatDelta">
-            {countryValueLine(rangeStart, startValue, valueFormatter, unitLabel, accent)}
+            {countryValueLine(effectiveStart, startValue, valueFormatter, unitLabel, accent)}
             {countryValueLine(effectiveEnd, endValue, valueFormatter, unitLabel, accent)}
           </div>
           {referenceFinite.length ? (
@@ -330,93 +378,73 @@ export default function TimeSeriesPanel({
         </div>
       </div>
 
-      <svg viewBox={`0 0 ${w} ${h}`} className="dashChartSvg">
-        <line x1={padL} y1={h - padB} x2={w - padR} y2={h - padB} className="dashAxis" />
-        <line x1={padL} y1={padT} x2={padL} y2={h - padB} className="dashAxis" />
+      <svg viewBox={`0 0 ${width} ${height}`} className="dashChartSvg">
+        <line x1={padL} y1={height - padB} x2={width - padR} y2={height - padB} className="dashAxis" />
+        <line x1={padL} y1={padT} x2={padL} y2={height - padB} className="dashAxis" />
 
-        <line x1={padL} y1={(padT + h - padB) / 2} x2={w - padR} y2={(padT + h - padB) / 2} className="dashGrid" />
+        <line x1={padL} y1={(padT + height - padB) / 2} x2={width - padR} y2={(padT + height - padB) / 2} className="dashGrid" />
 
-        {referencePath ? (
-          <path d={referencePath} fill="none" className="dashAvgLine" />
-        ) : null}
+        {referencePath ? <path d={referencePath} fill="none" className="dashAvgLine" /> : null}
 
         <path d={path} fill="none" stroke={accent} strokeWidth="3" />
 
-        {Number.isFinite(rangeStart) && Number.isFinite(effectiveEnd) ? (
+        {Number.isFinite(effectiveStart) && Number.isFinite(effectiveEnd) ? (
           <rect
-            x={xScale(Math.min(rangeStart, effectiveEnd))}
+            x={windowX1}
             y={padT}
-            width={Math.max(1, xScale(Math.max(rangeStart, effectiveEnd)) - xScale(Math.min(rangeStart, effectiveEnd)))}
-            height={h - padT - padB}
+            width={Math.max(1, windowX2 - windowX1)}
+            height={height - padT - padB}
             className="dashWindowFill"
           />
         ) : null}
 
-        {Number.isFinite(rangeStart) ? (
+        {Number.isFinite(effectiveStart) ? (
           <line
-            x1={xScale(rangeStart)}
+            x1={xScale(effectiveStart)}
             y1={padT}
-            x2={xScale(rangeStart)}
-            y2={h - padB}
+            x2={xScale(effectiveStart)}
+            y2={height - padB}
             className="dashRangeLine"
           />
         ) : null}
 
         {Number.isFinite(effectiveEnd) ? (
-          <line
-            x1={xScale(effectiveEnd)}
-            y1={padT}
-            x2={xScale(effectiveEnd)}
-            y2={h - padB}
-            className="dashFocusLine"
-          />
+          <line x1={xScale(effectiveEnd)} y1={padT} x2={xScale(effectiveEnd)} y2={height - padB} className="dashFocusLine" />
         ) : null}
 
-        {point ? (
-          <circle cx={xScale(point.year)} cy={yScale(point.value)} r="4.8" fill={accent} />
-        ) : null}
+        {point ? <circle cx={xScale(point.year)} cy={yScale(point.value)} r="4.8" fill={accent} /> : null}
 
-        <text x={padL} y={h - 10} className="dashTickText">
+        <text x={padL} y={height - 10} className="dashTickText">
           {xMin}
         </text>
-        <text x={w - padR} y={h - 10} textAnchor="end" className="dashTickText">
+        <text x={width - padR} y={height - 10} textAnchor="end" className="dashTickText">
           {xMax}
         </text>
         <text x={padL - 6} y={padT + 4} textAnchor="end" className="dashTickText">
           {valueFormatter ? valueFormatter(yMax) : yMax.toFixed(2)}
         </text>
-        <text x={padL - 6} y={h - padB + 4} textAnchor="end" className="dashTickText">
+        <text x={padL - 6} y={height - padB + 4} textAnchor="end" className="dashTickText">
           {valueFormatter ? valueFormatter(yMin) : yMin.toFixed(2)}
         </text>
 
-        <text
-          x={xScale(rangeStart)}
-          y={h - 12}
-          textAnchor="middle"
-          className="dashRangeText"
-        >
-          {rangeStart}
+        <text x={xScale(effectiveStart)} y={height - 12} textAnchor="middle" className="dashRangeText">
+          {effectiveStart}
         </text>
-        <text
-          x={xScale(effectiveEnd)}
-          y={h - 12}
-          textAnchor="middle"
-          className="dashRangeText"
-        >
+        <text x={xScale(effectiveEnd)} y={height - 12} textAnchor="middle" className="dashRangeText">
           {effectiveEnd}
         </text>
 
         <rect
           x={padL}
           y={padT}
-          width={w - padL - padR}
-          height={h - padT - padB}
+          width={width - padL - padR}
+          height={height - padT - padB}
           fill="transparent"
           onMouseDown={handleDown}
           onMouseMove={handleMove}
           onMouseUp={handleUp}
           onMouseLeave={() => {
-            onHoverYear?.(null);
+            notifyHover(null);
             handleUp();
           }}
         />
