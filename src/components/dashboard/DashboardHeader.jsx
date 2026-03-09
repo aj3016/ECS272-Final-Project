@@ -5,10 +5,6 @@ export default function DashboardHeader({
     countryName,
     iso3,
     selectedDisease,
-    diseases,
-    onDiseaseChange,
-    burdenMetric,
-    onMetricChange,
     rangeStart,
     rangeEnd,
     rangeWidth,
@@ -23,56 +19,14 @@ export default function DashboardHeader({
     <section className="dashHeaderCard">
       <div>
         <div className="dashTitleRow">
-          <div className="dashPageTitle">Country Impact Dashboard</div>
-          <div className={hasCountry ? "dashCountryInline" : "dashCountryInline dashCountryInlineWarn"}>
-            {hasCountry
-              ? `${countryName} (${iso3})`
-              : "No country selected. Select a country from 2. Globe view to populate this dashboard."}
+          <div className="dashPageTitle">
+            {hasCountry ? countryName : "Please select country in View 2: Globe"}
           </div>
         </div>
-        {hasCountry ? (
-          <div className="dashCountryLine">
-            This dashboard is scoped to the selected country across all charts.
-          </div>
-        ) : null}
       </div>
 
       <div className="dashControls">
-        <div className="dashControl dashControlCompact">
-          <label className="lbl">Disease</label>
-          <select
-            value={selectedDisease}
-            onChange={(e) => onDiseaseChange(e.target.value)}
-          >
-            {diseases.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="dashControl dashControlCompact">
-          <label className="lbl">Burden metric</label>
-          <div className="dashMetricSwitch">
-            <button
-              className={burdenMetric === "number" ? "dashToggle dashToggleOn" : "dashToggle"}
-              onClick={() => onMetricChange("number")}
-              type="button"
-            >
-              Number
-            </button>
-            <button
-              className={burdenMetric === "rate" ? "dashToggle dashToggleOn" : "dashToggle"}
-              onClick={() => onMetricChange("rate")}
-              type="button"
-            >
-              Rate
-            </button>
-          </div>
-        </div>
-
-        <div className="dashControl dashYearControl">
+        <div className="dashControl dashYearPanel">
           <div className="dashRangeControlLabel">Range width (highlighted years)</div>
           <div className="dashRangeSliderWrap">
             <div className="dashRangeValueBubble" style={{ left: `${bubbleLeftPct}%` }}>
@@ -86,6 +40,9 @@ export default function DashboardHeader({
               value={rangeWidth}
               onChange={(e) => onRangeWidthChange(Number(e.target.value))}
             />
+          </div>
+          <div className="dashRangeWindowText">
+            window: {rangeStart} - {rangeEnd}
           </div>
           <div className="dashRangeBounds">
             <span>1</span>

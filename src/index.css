@@ -500,10 +500,11 @@ button:hover,
 }
 
 .dashboardContent {
-  display: grid;
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   height: 100%;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  min-height: 0;
 }
 
 .dashHeaderCard,
@@ -546,6 +547,17 @@ button:hover,
   background: rgba(37, 99, 235, 0.10);
 }
 
+.dashTitleMetaInline {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.88);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  background: rgba(37, 99, 235, 0.10);
+  white-space: nowrap;
+}
+
 .dashCountryInlineWarn {
   color: rgba(153, 27, 27, 0.95);
   border-color: rgba(185, 28, 28, 0.30);
@@ -559,9 +571,7 @@ button:hover,
 }
 
 .dashControls {
-  display: grid;
-  grid-template-columns: minmax(130px, 0.9fr) minmax(120px, 0.8fr) minmax(220px, 1.3fr);
-  gap: 5px;
+  display: block;
 }
 
 .dashControl {
@@ -573,8 +583,45 @@ button:hover,
   max-width: 190px;
 }
 
-.dashYearControl {
-  grid-column: span 1;
+.dashScopePanel,
+.dashYearPanel {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.85),
+    rgba(248, 250, 252, 0.78)
+  );
+  padding: 8px;
+}
+
+.dashYearPanel {
+  align-content: center;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.dashScopeFixed {
+  display: grid;
+  gap: 4px;
+}
+
+.dashScopeChip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dashScopeChip strong {
+  color: var(--text);
+  font-weight: 700;
 }
 
 .dashMetricSwitch {
@@ -591,48 +638,272 @@ button:hover,
   background: rgba(37,99,235,0.12);
 }
 
-.dashStatsGrid {
+.dashSplitLayout {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.dashStatCard {
-  padding: 8px;
-}
-
-.dashStatLabel {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.dashStatValue {
-  margin-top: 4px;
-  font-size: 17px;
-  font-weight: 900;
-  color: var(--text);
-}
-
-.dashStatDelta {
-  margin-top: 4px;
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.dashChartsGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
+  height: 100%;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.dashLeftColumn,
+.dashRightColumn {
+  display: grid;
+  gap: 6px;
   min-height: 0;
   height: 100%;
 }
 
+.dashLeftColumn {
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.dashRightColumn {
+  grid-template-columns: 1fr;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  height: 100%;
+}
+
+.dashRightColumn > .dashChartCard {
+  min-height: 0;
+  height: 100%;
+}
+
+.dashRightColumnShell {
+  padding: 6px 10px;
+  min-height: 0;
+  height: 100%;
+}
+
+.dashRightColumnShell .dashRightColumn {
+  gap: 6px;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+}
+
+.dashRightColumnShell .dashChartCard {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  box-shadow: none;
+  padding: 5px 7px;
+  min-height: 0;
+  height: 100%;
+}
+
+.dashCountryHero,
+.dashBurdenCard,
+.dashRightColumnShell,
+.dashControlsCard,
+.dashCountryInfoCard {
+  background: linear-gradient(180deg, var(--card-strong), var(--card));
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashCountryHero {
+  padding: 8px 10px 4px 10px;
+  min-height: 0;
+}
+
+.dashCountryHeroTitle {
+  font-size: 22px;
+  line-height: 1.1;
+  font-weight: 900;
+  color: var(--text);
+  letter-spacing: 0.3px;
+  margin-bottom: 6px;
+}
+
+.dashBurdenCard {
+  padding: 8px 10px;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.dashBurdenTitle {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.dashBurdenSummaryLine {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dashBurdenSummaryLine strong {
+  font-weight: 900;
+}
+
+.dashChartStatDeltaCompactExtra {
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.25;
+  padding: 5px 7px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.dashControlsCard {
+  padding: 8px 10px;
+}
+
+.dashBurdenMainChart {
+  margin-top: 0;
+  margin-bottom: 0;
+  min-height: 0;
+  flex: 0 0 auto;
+  width: 100%;
+  overflow: hidden;
+}
+
+.dashBurdenMainChart .dashChartCard {
+  min-height: 0;
+  height: 100%;
+}
+
+.dashBurdenMainChart .dashChartSvg {
+  height: 100%;
+}
+
+.dashBurdenMainChart .dashChartHead {
+  min-height: 0;
+}
+
+.dashControlsInBurden {
+  margin-top: 0;
+  padding: 8px 6px 6px 6px;
+  border-top: 1px solid rgba(15, 23, 42, 0.1);
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.dashRangeBrushHint {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.dashRangeInlineControl {
+  margin-top: auto;
+  padding-top: 6px;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: flex-end;
+}
+
+.dashRangeSliderUnified {
+  border: 0;
+  border-radius: 0;
+  padding: 8px 4px 6px 4px;
+  background: transparent;
+  width: 100%;
+  min-height: 0;
+}
+
+.dashRangeSliderInline {
+  display: block;
+}
+
+.dashRangePresetMini {
+  margin-top: 7px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.dashRangePresetMini .dashToggle {
+  min-height: 23px;
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+.dashControlsTitle {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.dashControlsCard .dashPanelMetricSwitch {
+  margin-top: 8px;
+  margin-bottom: 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
 .dashChartCard {
-  padding: 8px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  height: 100%;
+}
+
+.dashChartCardCompact {
+  padding: 4px 6px;
+}
+
+.dashChartMainCompact {
+  display: grid;
+  grid-template-columns: 198px minmax(0, 1fr);
+  gap: 4px;
+  align-items: stretch;
+  height: 100%;
+  min-height: 0;
+}
+
+.dashChartMetaCompact {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.dashChartMetaCompact .dashChartTitle {
+  min-height: auto;
+}
+
+.dashChartMetaCompact .small {
+  min-height: auto;
+  display: block;
+  -webkit-line-clamp: unset;
+}
+
+.dashChartMetaCompactFooter {
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.dashChartSvgCompact {
+  height: 100%;
+  min-height: 0;
+}
+
+.dashChartSvgCompact .dashTickText {
+  font-size: 11px;
+}
+
+.dashChartSvgCompact .dashRangeText {
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .dashChartHead {
@@ -642,12 +913,49 @@ button:hover,
   gap: 8px;
   margin-bottom: 4px;
   flex: 0 0 auto;
+  min-height: 56px;
+}
+
+.dashChartHead > div:first-child {
+  flex: 1;
+  min-width: 0;
 }
 
 .dashChartTitle {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   color: var(--text);
+  line-height: 1.25;
+  min-height: 1.25em;
+}
+
+.dashChartHead .small {
+  margin-top: 2px;
+  line-height: 1.25;
+  min-height: 2.5em;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.dashPanelScopeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.dashPanelScopeChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.86);
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: rgba(37, 99, 235, 0.08);
 }
 
 .dashChartStat {
@@ -655,29 +963,48 @@ button:hover,
   min-width: 170px;
 }
 
+.dashChartStatScope {
+  margin-bottom: 4px;
+  font-size: 10px;
+  line-height: 1.3;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.72);
+}
+
+.dashPanelMetricSwitch {
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.dashPanelMetricSwitch .dashToggle {
+  min-height: 22px;
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
 .dashChartStatValue {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
 }
 
 .dashChartStatDelta {
   margin-top: 2px;
-  font-size: 12px;
-  line-height: 1.35;
+  font-size: 11px;
+  line-height: 1.3;
   color: var(--muted);
 }
 
 .dashChartStatAvg {
   margin-top: 3px;
-  font-size: 11px;
+  font-size: 10px;
   color: rgba(100, 116, 139, 0.95);
 }
 
 .dashChartSvg {
   width: 100%;
-  height: 100%;
-  flex: 1 1 auto;
-  min-height: 0;
+  height: 170px;
+  flex: 0 0 auto;
   display: block;
 }
 
@@ -730,10 +1057,12 @@ button:hover,
   margin-top: -2px;
 }
 
+
 .dashRangeControlLabel {
   font-size: 10px;
   font-weight: 700;
   color: var(--muted);
+  margin-top: 2px;
 }
 
 .dashLinkedHint {
@@ -755,7 +1084,8 @@ button:hover,
 
 .dashRangeSliderWrap {
   position: relative;
-  padding-top: 14px;
+  padding-top: 18px;
+  padding-bottom: 24px;
 }
 
 .dashRangeValueBubble {
@@ -771,7 +1101,91 @@ button:hover,
   padding: 1px 6px;
   line-height: 1.3;
   pointer-events: none;
+  z-index: 2;
 }
+
+.dashCustomSlider {
+  width: 100%;
+  min-width: 0;
+  display: block;
+  position: relative;
+  height: 18px;
+  cursor: pointer;
+  outline: none;
+  touch-action: none;
+}
+
+.dashCustomSlider:focus-visible {
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.24);
+  border-radius: 10px;
+}
+
+.dashCustomSliderTrack,
+.dashCustomSliderFill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  height: 10px;
+  border-radius: 999px;
+}
+
+.dashCustomSliderTrack {
+  width: 100%;
+  background: rgba(148, 163, 184, 0.3);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-sizing: border-box;
+}
+
+.dashCustomSliderFill {
+  width: 0;
+  background: rgba(37, 99, 235, 0.88);
+}
+
+.dashCustomSliderThumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 2px solid rgba(37, 99, 235, 0.88);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+}
+
+.dashRangeScale {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 21px;
+  height: 24px;
+  pointer-events: none;
+}
+
+.dashRangeScaleItem {
+  position: absolute;
+  transform: translateX(-50%);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.dashRangeScaleTick {
+  width: 1px;
+  height: 8px;
+  background: rgba(15, 23, 42, 0.34);
+}
+
+.dashRangeScaleLabel {
+  font-size: 8px;
+  line-height: 1;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: rgba(15, 23, 42, 0.65);
+}
+
 
 .dashHeaderCard .lbl {
   font-size: 10px;
@@ -814,16 +1228,6 @@ button:hover,
 
 .dashErrorCard {
   color: rgba(185, 28, 28, 0.95);
-}
-
-@media (max-width: 1040px) {
-  .dashStatsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dashChartsGrid { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 760px) {
-  .dashControls { grid-template-columns: 1fr; }
-  .dashStatsGrid { grid-template-columns: 1fr; }
 }
 
 /* ============================
@@ -965,4 +1369,333 @@ button:hover,
 .appShell {
   position: relative;
   z-index: 0;
+}
+
+.dashCountryInfoCard {
+  padding: 10px 12px;
+  background: linear-gradient(180deg, var(--card-strong), var(--card));
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashCountryInfoTitle {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.dashCountryInfoLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.dashCountryInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.dashCountryInfoGridLeft {
+  grid-template-columns: 1fr;
+  gap: 8px;
+  align-self: stretch;
+  min-height: 0;
+  height: 100%;
+}
+
+.dashIncomeBarCard {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 10px 10px 2px 10px;
+  height: 100%;
+}
+
+.dashIncomeBarTitle {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.dashIncomeBarMeta {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dashIncomeBarMeta strong {
+  color: var(--text);
+  font-weight: 900;
+}
+
+.dashIncomeYearPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0f172a, #334155);
+  color: #f8fafc;
+  font-weight: 800;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.dashIncomeBarSvg {
+  width: 100%;
+  height: auto;
+  margin-top: 6px;
+  display: block;
+}
+
+.dashIncomeTick {
+  fill: #64748b;
+  font-size: 10px;
+}
+
+.dashIncomeLegend {
+  margin-top: 6px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.dashIncomeLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.dashIncomeLegendItem i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.dashIncomeEmpty {
+  font-size: 12px;
+  color: var(--muted);
+  border: 1px dashed rgba(100, 116, 139, 0.45);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.dashCountryInfoItem {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 7px;
+  min-height: 76px;
+}
+
+.dashCountryInfoLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.dashCountryInfoValue {
+  margin-top: 3px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.dashCountryInfoSub {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dashCountryInfoAgePane {
+  min-width: 0;
+  min-height: 0;
+  align-self: stretch;
+  overflow: hidden;
+  height: 100%;
+}
+
+.dashAgeDonutCard {
+  margin-top: 0;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 10px 10px 2px 10px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.dashAgeDonutTitle {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  position: static;
+  line-height: 1.25;
+}
+
+.dashAgeBreakdown {
+  margin-top: 6px;
+  display: grid;
+  gap: 4px;
+  align-self: flex-start;
+}
+
+.dashAgeBreakdownItem {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.dashAgeBreakdownLabel {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.dashAgeBreakdownValue {
+  font-size: 11px;
+  color: var(--text);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashAgeDonutWrap {
+  margin-top: 4px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.dashAgeDonutSvg {
+  width: min(100%, 246px);
+  height: auto;
+  aspect-ratio: auto;
+}
+
+.dashAgeDonutCenter {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  width: 116px;
+}
+
+.dashAgeDonutCenterValue {
+  font-size: 15px;
+  line-height: 1.1;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.dashAgeDonutCenterLabel {
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.dashAgeSliceLabel {
+  font-size: 13px;
+  font-weight: 800;
+  dominant-baseline: middle;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.95);
+  stroke-width: 2.4px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dashAgeSliceConnector {
+  fill: none;
+  stroke: rgba(71, 85, 105, 0.7);
+  stroke-width: 1.2px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dashAgeLegendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.dashAgeLegendLabel {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.dashAgeLegendValue {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.dashAgeEmpty {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+@media (max-width: 1100px) {
+  .dashCountryInfoLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .dashCountryInfoGridLeft {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1400px) {
+  .dashSplitLayout {
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  }
+
+  .dashChartMainCompact {
+    grid-template-columns: 176px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1180px) {
+  .dashSplitLayout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .dashLeftColumn,
+  .dashRightColumnShell,
+  .dashRightColumn {
+    height: auto;
+  }
+
+  .dashRightColumn {
+    grid-template-rows: repeat(3, minmax(210px, auto));
+  }
+
+  .dashBurdenMainChart {
+    height: auto !important;
+  }
+
+  .dashControlsInBurden {
+    padding-bottom: 8px;
+  }
 }
