@@ -48,11 +48,9 @@ function Legend({ thresholds, metric, paletteName }) {
 }
 
 export default function ControlPanel({
-  diseases,
   years,
   selectedDisease,
   selectedYear,
-  onDiseaseChange,
   onYearChange,
   playing,
   onTogglePlay,
@@ -67,7 +65,6 @@ export default function ControlPanel({
   onScaleModeChange,
   paletteName,
   onPaletteChange,
-  diseaseDisabled = false,
 }) {
   const minY = years?.[0] ?? 1970;
   const maxY = years?.[years.length - 1] ?? 2024;
@@ -78,20 +75,21 @@ export default function ControlPanel({
       <div className="small">
         Rotate, scrub time, click a country to zoom + see drill-down.
       </div>
-
       <div className="row">
         <label>Disease</label>
-        <select
-          value={selectedDisease || ""}
-          disabled={diseaseDisabled}
-          onChange={(e) => onDiseaseChange(e.target.value)}
+        <div
+          style={{
+            width: "100%",
+            padding: "8px 10px",
+            borderRadius: "10px",
+            border: "1px solid rgba(0,0,0,0.08)",
+            background: "rgba(255,255,255,0.78)",
+            fontSize: "13px",
+            color: "#111",
+          }}
         >
-          {diseases.map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
-        </select>
+          {selectedDisease || "No disease selected"}
+        </div>
       </div>
 
       <div className="row">
@@ -101,6 +99,7 @@ export default function ControlPanel({
           <option value="number">Number</option>
         </select>
       </div>
+
       {scaleMode && onScaleModeChange ? (
         <div className="row">
           <label>Scale</label>
@@ -113,16 +112,6 @@ export default function ControlPanel({
           </select>
         </div>
       ) : null}
-
-      {/* <div className="row">
-        <label>Shades</label>
-        <select value={paletteName} onChange={(e) => onPaletteChange(e.target.value)}>
-          <option value="blue">Blue</option>
-          <option value="red">Red</option>
-          <option value="purple">Purple</option>
-          <option value="green">Green</option>
-        </select>
-      </div> */}
 
       <div className="row">
         <label>Year</label>
@@ -144,18 +133,6 @@ export default function ControlPanel({
         <label>Play</label>
         <button onClick={onTogglePlay}>{playing ? "⏸ Pause" : "▶ Play"}</button>
       </div>
-
-      {/* <div className="row">
-        <label>Speed</label>
-        <select
-          value={String(speedMs)}
-          onChange={(e) => onSpeedChange(Number(e.target.value))}
-        >
-          <option value="1200">Slow</option>
-          <option value="700">Normal</option>
-          <option value="350">Fast</option>
-        </select>
-      </div> */}
 
       <div className="row">
         <label>Auto-spin</label>
