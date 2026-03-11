@@ -86,6 +86,21 @@ function countryValueLine(year, value, formatter, unitLabel, accent) {
   );
 }
 
+function referenceValueLine(label, year, value, formatter, unitLabel) {
+  return (
+    <div>
+      {label} {year}: <span style={{ color: "#6b7280", fontWeight: 700 }}>{withUnit(formatValue(value, formatter), unitLabel)}</span>
+    </div>
+  );
+}
+
+function computeYDomain(points) {
+  const minValue = Math.min(...points.map((d) => d.value));
+  const maxValue = Math.max(...points.map((d) => d.value));
+  const padding = (maxValue - minValue) * 0.1;
+  return [minValue - padding, maxValue + padding];
+}
+
 export default function TimeSeriesPanel({
   title,
   subtitle = "",
@@ -146,10 +161,7 @@ export default function TimeSeriesPanel({
   const xMax = Math.max(...series.map((d) => d.year));
 
   const allFinite = [...finite, ...referenceFinite];
-  const dataMin = Math.min(...allFinite.map((d) => d.value));
-  const dataMax = Math.max(...allFinite.map((d) => d.value));
-  const yMin = Math.min(0, dataMin);
-  const yMax = Math.max(0, dataMax);
+  const [yMin, yMax] = computeYDomain(allFinite);
 
   const xScale = (x) => {
     return padL + ((x - xMin) / Math.max(1, xMax - xMin)) * (width - padL - padR);
@@ -269,6 +281,8 @@ export default function TimeSeriesPanel({
             {referenceFinite.length ? (
               <div className="dashChartStatAvg" style={{ color: "#6b7280" }}>
                 World avg Δ: {withUnit(formatDelta(avgDelta, valueFormatter), unitLabel)}
+                {referenceValueLine("World avg", effectiveStart, avgStartValue, valueFormatter, unitLabel)}
+                {referenceValueLine("World avg", effectiveEnd, avgEndValue, valueFormatter, unitLabel)}
               </div>
             ) : null}
             {compactFooter ? <div className="dashChartMetaCompactFooter">{compactFooter}</div> : null}
@@ -373,6 +387,8 @@ export default function TimeSeriesPanel({
           {referenceFinite.length ? (
             <div className="dashChartStatAvg" style={{ color: "#6b7280" }}>
               World avg Δ: {withUnit(formatDelta(avgDelta, valueFormatter), unitLabel)}
+              {referenceValueLine("World avg", effectiveStart, avgStartValue, valueFormatter, unitLabel)}
+              {referenceValueLine("World avg", effectiveEnd, avgEndValue, valueFormatter, unitLabel)}
             </div>
           ) : null}
         </div>
