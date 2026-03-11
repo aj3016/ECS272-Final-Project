@@ -22,21 +22,26 @@ const ANNOTATIONS = [
     year: 2004, 
     text: "HIV/AIDS Mortality Peak", 
     disease: "HIV/AIDS",
-    yOffset: 20 // Highest
+    yOffset: 20
   },
   { 
     year: 2014, 
     text: "Ebola Outbreak", 
     disease: "Ebola",
-    yOffset: 70 // Middle
+    yOffset: 70
   },
   { 
     year: 2021, 
     text: "COVID-19 Mortality Shock", 
     disease: "COVID-19",
-    yOffset: 20 // Lowest
+    yOffset: 20
   }
 ];
+
+/* -------- NEW SETTINGS FOR OVERVIEW VISUAL SCALING -------- */
+const OVERVIEW_POWER = 0.6;     // compress large diseases
+const OVERVIEW_MIN_SHARE = 0.03; // minimum visible share
+/* ---------------------------------------------------------- */
 
 export default function StreamGraph({
   onDiseaseSelect = null,
@@ -103,7 +108,7 @@ export default function StreamGraph({
       .domain(d3.extent(years))
       .range([margin.left, width - margin.right]);
 
-    const nested = years.map((year) => {
+    const rawNested = years.map((year) => {
       const row = { year };
       diseaseNames.forEach((name) => {
         const found = filtered.find(d => d.year === year && d.disease === name);
@@ -112,9 +117,64 @@ export default function StreamGraph({
       return row;
     });
 
+    const overviewNested = rawNested.map((row) => {
+
+      const values = diseaseNames.map(name => ({
+        name,
+        raw: row[name]
+      }));
+
+      const nonzero = values.filter(v => v.raw > 0);
+
+      if (nonzero.length === 0) return row;
+
+      let transformed = nonzero.map(v => ({
+        name: v.name,
+        val: Math.pow(v.raw, OVERVIEW_POWER)
+      }));
+
+      let total = d3.sum(transformed, d => d.val);
+      const minVal = total * OVERVIEW_MIN_SHARE;
+
+      let small = transformed.filter(d => d.val < minVal);
+      let large = transformed.filter(d => d.val >= minVal);
+
+      if (small.length > 0 && large.length > 0) {
+
+        const lockedTotal = small.length * minVal;
+        const remainingTotal = total - lockedTotal;
+        const largeSum = d3.sum(large, d => d.val);
+
+        transformed = transformed.map(d => {
+
+          if (d.val < minVal) {
+            return { ...d, val: minVal };
+          }
+
+          const scaled = largeSum > 0
+            ? (d.val / largeSum) * remainingTotal
+            : d.val;
+
+          return { ...d, val: scaled };
+
+        });
+      }
+
+      const out = { year: row.year };
+
+      diseaseNames.forEach(name => {
+        const found = transformed.find(d => d.name === name);
+        out[name] = found ? found.val : 0;
+      });
+
+      return out;
+    });
+
+    const nested = diseases ? rawNested : overviewNested;
+
     const stack = d3.stack()
       .keys(diseaseNames)
-      .order(d3.stackOrderInsideOut)
+      .order(d3.stackOrderNone)
       .offset(d3.stackOffsetWiggle);
 
     const layers = stack(nested);
@@ -145,7 +205,7 @@ export default function StreamGraph({
       .attr("class", "area-path")
       .attr("fill", d => {
         const c = d3.hsl(DISEASE_COLORS[d.key] || "#999");
-        c.s *= 0.85;   // reduce saturation (1 = original)
+        c.s *= 0.85;
         return c.toString();
       })
       .attr("d", areaFlat)
@@ -154,30 +214,41 @@ export default function StreamGraph({
         if (onDiseaseSelect) onDiseaseSelect(d.key);
       })
       .on("mouseenter", function(event, d) {
-        // Check if we are in 'Overview' mode (no specific disease selected in dropdown)
+
         const isOverview = diseases === null;
+
         if (isOverview) {
-          // OVERVIEW MODE: Just outline the band, keep others bright
+
           d3.select(this)
             .attr("stroke", "#000")
             .attr("stroke-width", 2)
-            .raise(); // Pulls the outlined band to the front so the border is visible
+            .raise();
+
         } else {
-          // FILTERED MODE: Dim others, highlight this one
+
           svg.selectAll(".area-path")
             .style("opacity", 0.25);
-          
+
           d3.select(this)
             .style("opacity", 1)
             .attr("stroke", "#000")
             .attr("stroke-width", 1);
+
         }
+
+        window.dispatchEvent(
+          new CustomEvent("hoverDisease", { detail: { disease: d.key } })
+        );
+
       })
       .on("mouseleave", function() {
-        // Reset everything
+
         svg.selectAll(".area-path")
           .style("opacity", 1)
           .attr("stroke", "none");
+
+        window.dispatchEvent(new CustomEvent("hoverDiseaseOff"));
+
       })
       .transition()
       .duration(1200)
@@ -203,12 +274,12 @@ export default function StreamGraph({
     function handleExternalHover(event) {
       const { year, source } = event.detail;
       if (source === "stream") return;
-      
+
       cursor.attr("x1", x(year)).attr("x2", x(year)).attr("opacity", 1).raise();
-      
+
       const total = totalsByYear.get(year);
       applyCleanTooltipStyle(tooltip);
-      
+
       tooltip.style("opacity", 1)
         .html(`
           <div style="font-weight:700; border-bottom:1px solid #eee; margin-bottom:8px; padding-bottom:4px; font-size:15px;">${year}</div>
@@ -217,37 +288,47 @@ export default function StreamGraph({
             <span style="font-size:14px; font-weight:700; color:#111;">${fmtNumber(Math.round(total))}</span>
           </div>
         `);
-      
+
       let left = x(year) + 12;
       const node = tooltip.node();
       const tooltipWidth = node ? node.offsetWidth : 220;
+
       if (left + tooltipWidth > width) left = x(year) - tooltipWidth - 12;
-      tooltip.style("left", `${left}px`).style("top", `${margin.top + 10}px`);
+
+      tooltip
+        .style("left", `${left}px`)
+        .style("top", `${margin.top + 10}px`);
     }
 
     window.addEventListener("hoverYear", handleExternalHover);
+
     window.addEventListener("hoverOff", () => {
       tooltip.style("opacity", 0);
       cursor.attr("opacity", 0);
     });
 
     svg.on("mousemove", function(event) {
+
       const [mx] = d3.pointer(event);
       const year = Math.round(x.invert(mx));
-      
-      // Dispatch event always to keep other graphs in sync
-      window.dispatchEvent(new CustomEvent("hoverYear", { detail: { year, source: "stream" } }));
+
+      window.dispatchEvent(new CustomEvent("hoverYear", {
+        detail: { year, source: "stream" }
+      }));
 
       const elements = document.elementsFromPoint(event.clientX, event.clientY);
       const topPath = elements.find(el => el.classList.contains("area-path"));
 
       if (topPath) {
-        // Show cursor only when over a path
+
         cursor.attr("x1", x(year)).attr("x2", x(year)).attr("opacity", 1).raise();
+
         applyCleanTooltipStyle(tooltip);
-        
+
         if (!diseases) {
-          const yearData = nested.find(d => d.year === year);
+
+          const yearData = rawNested.find(d => d.year === year);
+
           const sortedDiseases = diseaseNames
             .map(name => ({ name, val: yearData[name] }))
             .sort((a, b) => b.val - a.val);
@@ -265,7 +346,9 @@ export default function StreamGraph({
                 </div>
               `).join('')}
             `);
+
         } else {
+
           const datum = d3.select(topPath).datum();
           const disease = datum.key;
           const entry = datum.find(d => d.data.year === year);
@@ -283,23 +366,33 @@ export default function StreamGraph({
               </div>
             `);
         }
+
       } else {
-        // Hide both if not over a band
+
         tooltip.style("opacity", 0);
         cursor.attr("opacity", 0);
+
       }
 
       let left = mx + 14;
       const tooltipNode = tooltip.node();
       const tooltipWidth = tooltipNode ? tooltipNode.offsetWidth : 220;
+
       if (left + tooltipWidth > width) left = mx - tooltipWidth - 14;
-      tooltip.style("left", `${left}px`).style("top", `${margin.top + 10}px`);
+
+      tooltip
+        .style("left", `${left}px`)
+        .style("top", `${margin.top + 10}px`);
+
     });
 
     svg.on("mouseleave", () => {
+
       tooltip.style("opacity", 0);
       cursor.attr("opacity", 0);
+
       window.dispatchEvent(new CustomEvent("hoverOff"));
+
     });
 
     svg.append("g")
@@ -307,53 +400,61 @@ export default function StreamGraph({
       .call(d3.axisBottom(x).ticks(10).tickFormat(d3.format("d")))
       .attr("color", "#777");
 
-    // --- ANNOTATIONS LAYER ---
-const annotationGroup = svg.append("g").attr("class", "annotations").style("pointer-events", "none");
+    const annotationGroup = svg.append("g")
+      .attr("class", "annotations")
+      .style("pointer-events", "none");
 
-ANNOTATIONS.forEach(ann => {
-  // Only show annotation if the disease is currently in the filtered list
-  if (diseases && !diseases.includes(ann.disease)) return;
+    ANNOTATIONS.forEach(ann => {
 
-  const xPos = x(ann.year);
-  
-  // 1. Draw the Vertical Marker
-  annotationGroup.append("line")
-    .attr("x1", xPos)
-    .attr("x2", xPos)
-    .attr("y1", margin.top)
-    .attr("y2", height - margin.bottom)
-    .attr("stroke", "#333")
-    .attr("stroke-width", 1)
-    .attr("stroke-dasharray", "4,4")
-    .attr("opacity", 0.4);
+      if (diseases && !diseases.includes(ann.disease)) return;
 
-  // 2. Add the Text Label
-  annotationGroup.append("text")
-    .attr("x", xPos)
-    .attr("y", margin.top + ann.yOffset) 
-    .attr("text-anchor", (ann.year <= 2000 || ann.year > 2018) ? "end" : "start") 
-    .attr("dx", (ann.year <= 2000 || ann.year > 2018) ? -15 : 15)
-    .style("font-size", "12px")
-    .style("font-weight", "bold")
-    .style("fill", "#222")
-    .style("paint-order", "stroke")
-    .style("stroke", "#fff")
-    .style("stroke-width", "4px")
-    .text(ann.text);
-  });
+      const xPos = x(ann.year);
+
+      annotationGroup.append("line")
+        .attr("x1", xPos)
+        .attr("x2", xPos)
+        .attr("y1", margin.top)
+        .attr("y2", height - margin.bottom)
+        .attr("stroke", "#333")
+        .attr("stroke-width", 1)
+        .attr("stroke-dasharray", "4,4")
+        .attr("opacity", 0.4);
+
+      annotationGroup.append("text")
+        .attr("x", xPos)
+        .attr("y", margin.top + ann.yOffset)
+        .attr("text-anchor", (ann.year <= 2000 || ann.year > 2018) ? "end" : "start")
+        .attr("dx", (ann.year <= 2000 || ann.year > 2018) ? -15 : 15)
+        .style("font-size", "12px")
+        .style("font-weight", "bold")
+        .style("fill", "#222")
+        .style("paint-order", "stroke")
+        .style("stroke", "#fff")
+        .style("stroke-width", "4px")
+        .text(ann.text);
+
+    });
 
     return () => {
       window.removeEventListener("hoverYear", handleExternalHover);
     };
+
   }, [dimensions, data, diseases, onDiseaseSelect]);
 
   return (
     <div ref={containerRef} style={{ position: "relative", width: "100%", height: "100%" }}>
       <svg ref={svgRef} style={{ width: "100%", height: "100%" }} />
       <div id="stream-tooltip" style={{
-        position: "absolute", pointerEvents: "none", padding: "10px 14px", borderRadius: "8px",
-        fontSize: "13px", lineHeight: "1.2", minWidth: "180px", opacity: 0,
-        transition: "opacity 0.1s ease", zIndex: 999
+        position: "absolute",
+        pointerEvents: "none",
+        padding: "10px 14px",
+        borderRadius: "8px",
+        fontSize: "13px",
+        lineHeight: "1.2",
+        minWidth: "180px",
+        opacity: 0,
+        transition: "opacity 0.1s ease",
+        zIndex: 999
       }} />
     </div>
   );

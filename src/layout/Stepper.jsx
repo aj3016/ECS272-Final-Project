@@ -4,7 +4,7 @@ import { NavLink } from "react-router-dom";
 export default function Stepper({ dashboardTo = "/dashboard", hint = "" }) {
   const steps = [
     { to: "/stream", label: "1 Streamgraph" },
-    { to: "/globe", label: "2 Globe" },
+    { to: "/geo", label: "2 Geographic View" },
     { to: dashboardTo, label: "3 Dashboard" },
   ];
 

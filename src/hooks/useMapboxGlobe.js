@@ -54,6 +54,7 @@ export function useMapboxGlobe({
   scaleMode,
   paletteName,
   spinEnabled,
+  isFlatMap,
   onHover,
   onLeave,
   onCountryClick,
@@ -71,15 +72,16 @@ export function useMapboxGlobe({
   const onCountryClickRef = useRef(onCountryClick);
 
   const fsRafRef = useRef(null);
-
-  const lastHoverRef = useRef(null); 
+  const lastHoverRef = useRef(null);
 
   useEffect(() => {
     onHoverRef.current = onHover;
   }, [onHover]);
+
   useEffect(() => {
     onLeaveRef.current = onLeave;
   }, [onLeave]);
+
   useEffect(() => {
     onCountryClickRef.current = onCountryClick;
   }, [onCountryClick]);
@@ -165,12 +167,55 @@ export function useMapboxGlobe({
     };
   }, [mapContainerRef]);
 
+  // Ajinkya change: toggle between globe and flat map projection
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const applyProjection = () => {
+      map.setProjection(isFlatMap ? "mercator" : "globe");
+
+      if (isFlatMap) {
+        map.setFog(null);
+        map.easeTo({
+          center: [0, 20],
+          zoom: 0.8,
+          duration: 600,
+        });
+      } else {
+        map.setFog({
+          range: [0.8, 8],
+          color: "white",
+          "high-color": "#dbeafe",
+          "space-color": "#0b1020",
+          "horizon-blend": 0.06,
+        });
+        map.easeTo({
+          center: [0, 20],
+          zoom: 1.25,
+          duration: 600,
+        });
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      applyProjection();
+    } else {
+      map.once("style.load", applyProjection);
+      return () => {
+        try {
+          map.off("style.load", applyProjection);
+        } catch {}
+      };
+    }
+  }, [isFlatMap]);
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !countriesGeo || !selectedDisease) return;
 
     const handleLoad = () => {
-      const hasCountries = !!map.getSource("countries"); 
+      const hasCountries = !!map.getSource("countries");
 
       if (!hasCountries) {
         map.addSource("countries", {
@@ -212,7 +257,7 @@ export function useMapboxGlobe({
           if (iso3) {
             const st = map.getFeatureState({ source: "countries", id: iso3 });
             value = st?.hasValue ? st.value : undefined;
-            lastHoverRef.current = { feature: f, point: e.point, iso3 }; 
+            lastHoverRef.current = { feature: f, point: e.point, iso3 };
           }
 
           onHoverRef.current?.({ feature: f, point: e.point, value });
@@ -220,7 +265,7 @@ export function useMapboxGlobe({
 
         map.on("mouseleave", "countries-fill", () => {
           map.getCanvas().style.cursor = "";
-          lastHoverRef.current = null; 
+          lastHoverRef.current = null;
           onLeaveRef.current?.();
         });
 
@@ -232,7 +277,7 @@ export function useMapboxGlobe({
 
           try {
             const centroid = turf.centroid(f).geometry.coordinates;
-            map.easeTo({ center: centroid, zoom: 3.2, duration: 900 });
+            map.easeTo({ center: centroid, zoom: isFlatMap ? 2.4 : 3.2, duration: 900 });
           } catch (err) {
             console.warn("Could not compute centroid", err);
           }
@@ -249,25 +294,26 @@ export function useMapboxGlobe({
         startSpinLoop(map);
       }
 
-      map.setPaintProperty( 
+      map.setPaintProperty(
         "countries-fill",
         "fill-color",
         buildFillExpressionFromState(thresholds, paletteName)
       );
 
-      map.setPaintProperty( 
+      map.setPaintProperty(
         "countries-outline",
         "line-color",
         diseaseAccent(selectedDisease)
       );
 
-      scheduleFeatureStateUpdate(map); 
+      scheduleFeatureStateUpdate(map);
     };
 
     function startSpinLoop(mapInstance) {
       const step = () => {
         rafRef.current = requestAnimationFrame(step);
 
+        if (isFlatMap) return;
         if (!spinEnabledRef.current) return;
         if (userInteractingRef.current) return;
 
@@ -311,11 +357,11 @@ export function useMapboxGlobe({
         }
         prevIsoSetRef.current = nextSet;
 
-        const h = lastHoverRef.current; 
-        if (h?.iso3) { 
-          const st = mapInstance.getFeatureState({ source: "countries", id: h.iso3 }); 
-          const value = st?.hasValue ? st.value : undefined; 
-          onHoverRef.current?.({ feature: h.feature, point: h.point, value }); 
+        const h = lastHoverRef.current;
+        if (h?.iso3) {
+          const st = mapInstance.getFeatureState({ source: "countries", id: h.iso3 });
+          const value = st?.hasValue ? st.value : undefined;
+          onHoverRef.current?.({ feature: h.feature, point: h.point, value });
         }
       });
     }
@@ -323,7 +369,7 @@ export function useMapboxGlobe({
     if (map.loaded()) handleLoad();
     else map.once("load", handleLoad);
 
-    return () => { 
+    return () => {
       try {
         map.off("load", handleLoad);
       } catch {}
@@ -336,6 +382,7 @@ export function useMapboxGlobe({
     metric,
     thresholds,
     paletteName,
+    isFlatMap,
   ]);
 
   useEffect(() => {
@@ -382,11 +429,11 @@ export function useMapboxGlobe({
       }
       prevIsoSetRef.current = nextSet;
 
-      const h = lastHoverRef.current; 
-      if (h?.iso3) { 
-        const st = map.getFeatureState({ source: "countries", id: h.iso3 }); 
-        const value = st?.hasValue ? st.value : undefined; 
-        onHoverRef.current?.({ feature: h.feature, point: h.point, value }); 
+      const h = lastHoverRef.current;
+      if (h?.iso3) {
+        const st = map.getFeatureState({ source: "countries", id: h.iso3 });
+        const value = st?.hasValue ? st.value : undefined;
+        onHoverRef.current?.({ feature: h.feature, point: h.point, value });
       }
     });
   }, [

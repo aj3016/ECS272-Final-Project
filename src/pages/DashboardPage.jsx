@@ -636,9 +636,9 @@ export default function DashboardPage() {
       <div className="dashboardCanvas dashboardContent">
         {!hasCountry ? (
           <div className="dashLoadingCard dashInlineCardRow">
-            <span>Select a country in 2 Globe to open a full dashboard.</span>
-            <Link className="btnSmall" to={`/globe?disease=${encodeURIComponent(selectedDisease)}`}>
-              Go to 2 Globe
+            <span>Select a country in 2 Geographic View to open a full dashboard.</span>
+            <Link className="btnSmall" to={`/geo?disease=${encodeURIComponent(selectedDisease)}`}>
+              Go to 2 Geographic View
             </Link>
           </div>
         ) : null}

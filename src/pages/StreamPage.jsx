@@ -23,7 +23,7 @@ export default function StreamPage() {
       <StreamView
         onDiseaseSelect={(d) => {
           setDiseaseFromStreamgraph(d);
-          navigate(`/globe?disease=${encodeURIComponent(d)}`);
+          navigate(`/geo?disease=${encodeURIComponent(d)}`);
         }}
       />
 

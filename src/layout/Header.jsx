@@ -15,19 +15,19 @@ export default function Header() {
         helpContent: (
           <ul className="helpList">
             <li>Hover to see total deaths for a disease band.</li>
-            <li>Click a band to select a disease and move to the Globe.</li>
+            <li>Click a band to select a disease and move to the Geographic View.</li>
             <li>Use the mode dropdown to switch subsets/scales.</li>
           </ul>
         ),
       };
     }
 
-    if (path.startsWith("/globe")) {
+    if (path.startsWith("/geo")) {
       return {
-        helpTitle: "Globe help",
+        helpTitle: "Geographic View help",
         helpContent: (
           <ul className="helpList">
-            <li>Drag to rotate the globe; scroll to zoom.</li>
+            <li>Drag to rotate or pan the map; scroll to zoom.</li>
             <li>Hover a country to see the value for the selected disease/year.</li>
             <li>Click a country to open the detail panel (sparkline).</li>
             <li>Use Play to animate years; Metric/Scale/Shades improve readability.</li>
@@ -60,7 +60,7 @@ export default function Header() {
       <header className="appHeader">
         <div className="headerLeft">
           <div className="brand">ECS272 • Global Disease Story</div>
-          <div className="subtitle">Streamgraph → Globe → Dashboard</div>
+          <div className="subtitle">Streamgraph → Geographic View → Dashboard</div>
         </div>
 
         <button
