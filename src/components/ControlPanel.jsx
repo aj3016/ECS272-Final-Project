@@ -65,16 +65,19 @@ export default function ControlPanel({
   onScaleModeChange,
   paletteName,
   onPaletteChange,
+  isFlatMap,
+  onToggleProjection,
 }) {
   const minY = years?.[0] ?? 1970;
   const maxY = years?.[years.length - 1] ?? 2024;
 
   return (
     <div className="panel">
-      <div style={{ fontWeight: 700 }}>Global Disease Globe</div>
+      <div style={{ fontWeight: 700 }}>Global Disease Map</div>
       <div className="small">
         Rotate, scrub time, click a country to zoom + see drill-down.
       </div>
+
       <div className="row">
         <label>Disease</label>
         <div
@@ -89,6 +92,56 @@ export default function ControlPanel({
           }}
         >
           {selectedDisease || "No disease selected"}
+        </div>
+      </div>
+
+      <div className="row">
+        <label>View</label>
+        <div
+          style={{
+            width: "100%",
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "6px",
+            padding: "4px",
+            borderRadius: "12px",
+            background: "rgba(255,255,255,0.55)",
+            border: "1px solid rgba(0,0,0,0.08)",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              if (isFlatMap) onToggleProjection();
+            }}
+            style={{
+              padding: "8px 10px",
+              borderRadius: "10px",
+              border: isFlatMap ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(37,99,235,0.28)",
+              background: isFlatMap ? "rgba(255,255,255,0.72)" : "rgba(37,99,235,0.12)",
+              color: "#111",
+              fontWeight: isFlatMap ? 500 : 700,
+            }}
+          >
+            Globe
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (!isFlatMap) onToggleProjection();
+            }}
+            style={{
+              padding: "8px 10px",
+              borderRadius: "10px",
+              border: isFlatMap ? "1px solid rgba(37,99,235,0.28)" : "1px solid rgba(0,0,0,0.06)",
+              background: isFlatMap ? "rgba(37,99,235,0.12)" : "rgba(255,255,255,0.72)",
+              color: "#111",
+              fontWeight: isFlatMap ? 700 : 500,
+            }}
+          >
+            Flat
+          </button>
         </div>
       </div>
 
@@ -139,6 +192,7 @@ export default function ControlPanel({
         <input
           type="checkbox"
           checked={spinEnabled}
+          disabled={isFlatMap}
           onChange={(e) => onSpinToggle(e.target.checked)}
         />
       </div>

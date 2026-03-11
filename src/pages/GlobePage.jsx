@@ -28,7 +28,6 @@ export default function GlobePage() {
   } = useIhmeData();
 
   const viz = useVizStore();
-
   const { markReady } = usePageReady();
 
   const diseaseFromQuery = (sp.get("disease") || "").trim() || null;
@@ -38,8 +37,9 @@ export default function GlobePage() {
   const [paletteName, setPaletteName] = useState("blue");
   const [metric, setMetric] = useState("rate");
   const [spinEnabled, setSpinEnabled] = useState(true);
+  const [isFlatMap, setIsFlatMap] = useState(false);
 
-  const [manualDisease, setManualDisease] = useState(null); 
+  const [manualDisease, setManualDisease] = useState(null);
 
   const [playing, setPlaying] = useState(false);
   const [speedMs, setSpeedMs] = useState(700);
@@ -58,14 +58,14 @@ export default function GlobePage() {
 
   const selectedDisease = useMemo(() => {
     return (
-      manualDisease ?? 
+      manualDisease ??
       diseaseFromQuery ??
       viz.disease ??
       defaults.defaultDisease ??
       diseases[0] ??
       null
     );
-  }, [manualDisease ?? diseaseFromQuery, viz.disease, defaults.defaultDisease, diseases]);
+  }, [manualDisease, diseaseFromQuery, viz.disease, defaults.defaultDisease, diseases]);
 
   useEffect(() => {
     if (!defaults.defaultDisease) return;
@@ -77,6 +77,12 @@ export default function GlobePage() {
     [loading, error, selectedDisease, years.length]
   );
 
+  useEffect(() => {
+    if (isFlatMap && spinEnabled) {
+      setSpinEnabled(false);
+    }
+  }, [isFlatMap, spinEnabled]);
+
   const { thresholds, map } = useMapboxGlobe({
     mapContainerRef,
     countriesGeo,
@@ -87,6 +93,7 @@ export default function GlobePage() {
     scaleMode,
     paletteName,
     spinEnabled,
+    isFlatMap,
     onHover: ({ feature, point, value }) => {
       setTooltip({ visible: true, x: point.x, y: point.y, feature, value });
     },
@@ -150,7 +157,7 @@ export default function GlobePage() {
 
       {error ? (
         <div className="panel">
-          <div style={{ fontWeight: 700 }}>Global Disease Globe</div>
+          <div style={{ fontWeight: 700 }}>Global Disease View</div>
           <div className="small" style={{ color: "#b91c1c" }}>
             {error}
           </div>
@@ -165,7 +172,10 @@ export default function GlobePage() {
           years={years}
           selectedDisease={selectedDisease || ""}
           selectedYear={selectedYear}
-          onDiseaseChange={(d) => {setManualDisease(d); setDiseaseManual(d);}}
+          onDiseaseChange={(d) => {
+            setManualDisease(d);
+            setDiseaseManual(d);
+          }}
           diseaseDisabled={viz.diseaseLocked || !!diseaseFromQuery}
           onYearChange={(y) => setSelectedYear(y)}
           playing={playing}
@@ -181,6 +191,8 @@ export default function GlobePage() {
           onScaleModeChange={(s) => setScaleMode(s)}
           paletteName={paletteName}
           onPaletteChange={(p) => setPaletteName(p)}
+          isFlatMap={isFlatMap}
+          onToggleProjection={() => setIsFlatMap((prev) => !prev)}
         />
       )}
 
@@ -210,7 +222,7 @@ export default function GlobePage() {
 
       {!ready && !error ? (
         <div className="panel">
-          <div style={{ fontWeight: 700 }}>Global Disease Globe</div>
+          <div style={{ fontWeight: 700 }}>Global Disease Map</div>
           <div className="small">Loading data…</div>
           <div className="small">
             Expecting: <b>/public/data/countries_geojson.json</b> and{" "}

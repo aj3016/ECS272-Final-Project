@@ -9,7 +9,7 @@ import { PageReadyProvider } from "../state/pageReady";
 
 function routeRank(pathname) {
   if (pathname.startsWith("/stream")) return 0;
-  if (pathname.startsWith("/globe")) return 1;
+  if (pathname.startsWith("/geo")) return 1;
   if (pathname.startsWith("/dashboard")) return 2;
   return 0;
 }
@@ -19,15 +19,15 @@ export default function AppLayout() {
 
   const stepHint = useMemo(() => {
     if (loc.pathname.startsWith("/stream"))
-      return "Click a band to choose a disease → Globe";
-    if (loc.pathname.startsWith("/globe"))
-      return "Drag to rotate • Hover for values • Click a country → Details";
+      return "Click a band to choose a disease → Geographic View";
+    if (loc.pathname.startsWith("/geo"))
+      return "Drag to rotate or pan • Hover for values • Click a country → Details";
     if (loc.pathname.startsWith("/dashboard"))
       return "Compare disease burden vs demographic trends • Hover charts to sync year";
     return "";
   }, [loc.pathname]);
 
-  const vantaEnabled = loc.pathname !== "/globe";
+  const vantaEnabled = loc.pathname !== "/geo";
 
   // directional logic
   const prevRankRef = useRef(routeRank(loc.pathname));

@@ -20,7 +20,7 @@ export default function DashboardHeader({
       <div>
         <div className="dashTitleRow">
           <div className="dashPageTitle">
-            {hasCountry ? countryName : "Please select country in View 2: Globe"}
+            {hasCountry ? countryName : "Please select country in View 2: Geographic View"}
           </div>
         </div>
       </div>
