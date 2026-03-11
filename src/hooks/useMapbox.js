@@ -44,7 +44,7 @@ function getPerYear(valuesByMetricDiseaseYear, metric, disease, year) {
   return byMetric?.[disease]?.[year] || {};
 }
 
-export function useMapboxGlobe({
+export function useMapbox({
   mapContainerRef,
   countriesGeo,
   valuesByMetricDiseaseYear,

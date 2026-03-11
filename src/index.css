@@ -132,7 +132,7 @@ button:hover,
 }
 
 /* ============================
-   Globe page (legacy classes)
+   Geographic View page (legacy classes)
    ============================ */
 
 .mapRoot {
@@ -146,7 +146,7 @@ button:hover,
   inset: 0;
 }
 
-/* legacy panel (globe controls) */
+/* legacy panel (Geographic View controls) */
 .panel {
   position: absolute;
   top: 12px;
@@ -207,7 +207,7 @@ button:hover,
   box-shadow: var(--shadow-sm);
 }
 
-/* Legacy detail panel (globe) */
+/* Legacy detail panel (Geographic View) */
 .detailPanel {
   position: absolute;
   top: 12px;

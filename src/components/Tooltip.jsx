@@ -1,6 +1,6 @@
 import React from "react";
 import { diseaseAccent } from "../utils/color";
-import { featureToCountryMeta } from "../hooks/useMapboxGlobe";
+import { featureToCountryMeta } from "../hooks/useMapbox";
 
 function formatValue(value, metric) {
   if (value === undefined || value === null || !Number.isFinite(Number(value))) {

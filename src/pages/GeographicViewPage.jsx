@@ -1,26 +1,24 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import ControlPanel from "../components/ControlPanel";
 import Tooltip from "../components/Tooltip";
 import DetailPanel from "../components/DetailPanel";
 
 import { useIhmeData } from "../hooks/useIhmeData";
-import { useMapboxGlobe } from "../hooks/useMapboxGlobe";
+import { useMapbox } from "../hooks/useMapbox";
 
-import { useVizStore, setDiseaseManual } from "../state/vizStore";
+import { useVizStore } from "../state/vizStore";
 import { usePageReady } from "../state/pageReady";
 
 export default function GlobePage() {
   const navigate = useNavigate();
-  const [sp] = useSearchParams();
   const mapContainerRef = useRef(null);
 
   const {
     countriesGeo,
     valuesByMetricDiseaseYear,
     incomeGroupByYear,
-    diseases,
     years,
     loading,
     error,
@@ -30,16 +28,12 @@ export default function GlobePage() {
   const viz = useVizStore();
   const { markReady } = usePageReady();
 
-  const diseaseFromQuery = (sp.get("disease") || "").trim() || null;
-
   const [selectedYear, setSelectedYear] = useState(2000);
   const [scaleMode, setScaleMode] = useState("global");
   const [paletteName, setPaletteName] = useState("blue");
   const [metric, setMetric] = useState("rate");
   const [spinEnabled, setSpinEnabled] = useState(true);
   const [isFlatMap, setIsFlatMap] = useState(false);
-
-  const [manualDisease, setManualDisease] = useState(null);
 
   const [playing, setPlaying] = useState(false);
   const [speedMs, setSpeedMs] = useState(700);
@@ -57,15 +51,8 @@ export default function GlobePage() {
   const [clickedFeature, setClickedFeature] = useState(null);
 
   const selectedDisease = useMemo(() => {
-    return (
-      manualDisease ??
-      diseaseFromQuery ??
-      viz.disease ??
-      defaults.defaultDisease ??
-      diseases[0] ??
-      null
-    );
-  }, [manualDisease, diseaseFromQuery, viz.disease, defaults.defaultDisease, diseases]);
+    return viz.disease ?? defaults.defaultDisease ?? null;
+  }, [viz.disease, defaults.defaultDisease]);
 
   useEffect(() => {
     if (!defaults.defaultDisease) return;
@@ -83,7 +70,7 @@ export default function GlobePage() {
     }
   }, [isFlatMap, spinEnabled]);
 
-  const { thresholds, map } = useMapboxGlobe({
+  const { thresholds, map } = useMapbox({
     mapContainerRef,
     countriesGeo,
     valuesByMetricDiseaseYear,
@@ -157,7 +144,7 @@ export default function GlobePage() {
 
       {error ? (
         <div className="panel">
-          <div style={{ fontWeight: 700 }}>Global Disease View</div>
+          <div style={{ fontWeight: 700 }}>Global Disease Map</div>
           <div className="small" style={{ color: "#b91c1c" }}>
             {error}
           </div>
@@ -168,15 +155,9 @@ export default function GlobePage() {
         </div>
       ) : (
         <ControlPanel
-          diseases={diseases}
           years={years}
           selectedDisease={selectedDisease || ""}
           selectedYear={selectedYear}
-          onDiseaseChange={(d) => {
-            setManualDisease(d);
-            setDiseaseManual(d);
-          }}
-          diseaseDisabled={viz.diseaseLocked || !!diseaseFromQuery}
           onYearChange={(y) => setSelectedYear(y)}
           playing={playing}
           onTogglePlay={onTogglePlay}

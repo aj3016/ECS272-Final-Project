@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { diseaseAccent } from "../utils/color";
 import { buildSparkPath } from "../utils/sparkline";
-import { featureToCountryMeta } from "../hooks/useMapboxGlobe";
+import { featureToCountryMeta } from "../hooks/useMapbox";
 
 function getSeries(valuesByMetricDiseaseYear, metric, years, iso3, disease) {
   const byMetric = valuesByMetricDiseaseYear?.[metric];
