@@ -2,6 +2,11 @@
 
 An interactive data visualization exploring the demographic impact of major infectious disease outbreaks from 1980 to 2023. This project was built for ECS 272: Information Visualization at UC Davis.
 
+## Team
+
+Ajinkya Abhay Gothankar, Manami Nakagawa, Jeanine Ohene-Agyei
+ECS 272 — UC Davis
+
 ## Overview
 
 This visualization follows a drill-down storytelling structure across three connected views:
@@ -67,8 +72,3 @@ Then open your browser and navigate to the local URL shown in your terminal (typ
 1. **Stream Graph** — Hover over the chart to explore yearly disease mortality values. Use the dropdown to switch between the overview, high-volume diseases, and low-volume diseases. Click any disease band to navigate to the globe filtered to that disease.
 2. **Globe** — Drag to rotate, hover over countries to see values, and use the year slider or autoplay to explore changes over time. Click a country to open its country dashboard.
 3. **Dashboard** — Compare disease burden against life expectancy, population growth rate, and population trends for the selected country. Hover over any chart to sync the year indicator across all views.
-
-## Team
-
-Ajinkya Abhay Gothankar, Manami Nakagawa, Jeanine Ohene-Agyei
-ECS 272 — UC Davis
