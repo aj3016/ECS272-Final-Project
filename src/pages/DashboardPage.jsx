@@ -14,6 +14,7 @@ const YEAR_MAX = 2023;
 const INCOME_YEAR_MIN = 1987;
 
 function safeNum(value) {
+
   const n = Number(value);
   if (!Number.isFinite(n)) {
     return null;
@@ -25,12 +26,14 @@ function compact(value) {
   if (!Number.isFinite(value)) {
     return "—";
   }
+
   if (Math.abs(value) >= 1e9) {
     return `${(value / 1e9).toFixed(2)}B`;
   }
   if (Math.abs(value) >= 1e6) {
     return `${(value / 1e6).toFixed(2)}M`;
   }
+
   if (Math.abs(value) >= 1e3) {
     return `${(value / 1e3).toFixed(2)}K`;
   }
@@ -45,6 +48,7 @@ function fmt2(value) {
 }
 
 function nearestYear(years, target) {
+
   if (!years.length || !Number.isFinite(target)) {
     if (!years.length) {
       return null;
@@ -83,6 +87,8 @@ function classifyIncomeGroup(value) {
   if (!raw || raw === "no data found") {
     return "Unclassified";
   }
+
+
   if (raw.includes("high")) {
     return "High";
   }
@@ -217,6 +223,7 @@ export default function DashboardPage() {
   const rangeStart = useMemo(() => {
     const maxStart = Math.max(minYear, maxYear - effectiveRangeWidth);
     const startCandidate = clamp(incomeAnchorYear, minYear, maxStart);
+    
     return nearestYear(allYears, startCandidate);
   }, [allYears, incomeAnchorYear, minYear, maxYear, effectiveRangeWidth]);
 
@@ -802,7 +809,7 @@ export default function DashboardPage() {
             <section className="dashRightColumnShell">
               <div className="dashRightColumn">
                 <TimeSeriesPanel
-                  title="Population Growth Rate (%)"
+                  title="Population Growth Rate"
                   subtitle="Annual growth rate over time"
                   series={growthSeries}
                   referenceSeries={avgSeriesByMetric.pop_growth}
@@ -814,26 +821,9 @@ export default function DashboardPage() {
                   onHoverYear={setHoverYear}
                   accent="#0f766e"
                   valueFormatter={fmt2}
-                  unitLabel="pp"
+                  unitLabel="%"
                   layout="rightCompact"
                   panelRef={rightCardMeasureRef}
-                />
-
-                <TimeSeriesPanel
-                  title="Life Expectancy (Years)"
-                  subtitle="The average number of years a newborn is expected to live"
-                  series={lifeSeries}
-                  referenceSeries={avgSeriesByMetric.life_expectancy}
-                  contextCountry={hasCountry ? `${countryName} (${iso3Upper})` : "Not selected"}
-                  contextDisease={selectedDisease}
-                  rangeStart={rangeStart}
-                  rangeEnd={rangeEnd}
-                  hoverYear={hoverYear}
-                  onHoverYear={setHoverYear}
-                  accent="#7c3aed"
-                  valueFormatter={fmt2}
-                  unitLabel="years"
-                  layout="rightCompact"
                 />
 
                 <TimeSeriesPanel
@@ -850,6 +840,23 @@ export default function DashboardPage() {
                   accent="#b45309"
                   valueFormatter={compact}
                   unitLabel="people"
+                  layout="rightCompact"
+                />
+
+                <TimeSeriesPanel
+                  title="Life Expectancy"
+                  subtitle="The average number of years a newborn is expected to live"
+                  series={lifeSeries}
+                  referenceSeries={avgSeriesByMetric.life_expectancy}
+                  contextCountry={hasCountry ? `${countryName} (${iso3Upper})` : "Not selected"}
+                  contextDisease={selectedDisease}
+                  rangeStart={rangeStart}
+                  rangeEnd={rangeEnd}
+                  hoverYear={hoverYear}
+                  onHoverYear={setHoverYear}
+                  accent="#7c3aed"
+                  valueFormatter={fmt2}
+                  unitLabel="years"
                   layout="rightCompact"
                 />
               </div>
