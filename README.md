@@ -5,15 +5,16 @@ An interactive data visualization exploring the demographic impact of major infe
 ## Team
 
 Ajinkya Abhay Gothankar, Manami Nakagawa, Jeanine Ohene-Agyei
+
 ECS 272 — UC Davis
 
 ## Overview
 
 This visualization follows a drill-down storytelling structure across three connected views:
 
-- **Stream Graph** — Explore global disease mortality trends over time across seven diseases, with a synchronized population growth rate chart beneath
-- **Interactive Globe** — Examine the geographic distribution of disease burden across countries, with time scrubbing and autoplay
-- **Country Dashboard** — Drill into a specific country to compare disease burden against demographic indicators including life expectancy, population growth rate, and GNI per person
+- **Stream Graph:** Explore global disease mortality trends over time across seven diseases, with a synchronized population growth rate chart beneath
+- **Interactive Globe:** Examine the geographic distribution of disease burden across countries, with time scrubbing and autoplay
+- **Country Dashboard:** Drill into a specific country to compare disease burden against demographic indicators including life expectancy, population growth rate, and GNI per person
 
 The seven diseases covered are: HIV/AIDS, Malaria, Measles, Dengue, Influenza, Ebola, and COVID-19.
 
@@ -69,6 +70,6 @@ Then open your browser and navigate to the local URL shown in your terminal (typ
 
 ## How to Use
 
-1. **Stream Graph** — Hover over the chart to explore yearly disease mortality values. Use the dropdown to switch between the overview, high-volume diseases, and low-volume diseases. Click any disease band to navigate to the globe filtered to that disease.
-2. **Globe** — Drag to rotate, hover over countries to see values, and use the year slider or autoplay to explore changes over time. Click a country to open its country dashboard.
-3. **Dashboard** — Compare disease burden against life expectancy, population growth rate, and population trends for the selected country. Hover over any chart to sync the year indicator across all views.
+1. **Stream Graph:** Hover over the chart to explore yearly disease mortality values. Use the dropdown to switch between the overview, high-volume diseases, and low-volume diseases. Click any disease band to navigate to the globe filtered to that disease.
+2. **Globe:** Drag to rotate, hover over countries to see values, and use the year slider or autoplay to explore changes over time. Click a country to open its country dashboard.
+3. **Dashboard:** Compare disease burden against life expectancy, population growth rate, and population trends for the selected country. Hover over any chart to sync the year indicator across all views.
