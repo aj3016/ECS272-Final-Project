@@ -66,7 +66,7 @@ npm install
 npm run dev
 ```
 
-Then open your browser and navigate to the local URL shown in your terminal (typically `http://localhost:5173`).
+Then open your browser and navigate to the local URL shown in your terminal.
 
 ## How to Use
 
