@@ -112,23 +112,35 @@ export default function IncomeBarChart({ series, selectedYear, onSelectYear }) {
           const color = CLASS_COLORS[d.classification] || CLASS_COLORS.Unclassified;
           const isSelected = selected.year === d.year;
           return (
-            <rect
-              key={d.year}
-              x={xPos}
-              y={yPos}
-              width={Math.max(1, x.bandwidth())}
-              height={bh}
-              fill={color}
-              opacity={isSelected ? 1 : 0.64}
-              stroke={isSelected ? "#0f172a" : "transparent"}
-              strokeWidth={isSelected ? 2 : 0}
-              style={{ cursor: "default" }}
-              onMouseEnter={() => {
-                if (typeof onSelectYear === "function") {
-                  onSelectYear(d.year);
-                }
-              }}
-            />
+            <g key={d.year}>
+              {isSelected ? (
+                <text
+                  x={xPos + x.bandwidth() / 2}
+                  y={Math.max(10, yPos - 6)}
+                  textAnchor="middle"
+                  className="dashIncomeTick"
+                  style={{ fontWeight: 800, fill: "#0f172a" }}
+                >
+                  {d.year}
+                </text>
+              ) : null}
+              <rect
+                x={xPos}
+                y={yPos}
+                width={Math.max(1, x.bandwidth())}
+                height={bh}
+                fill={color}
+                opacity={isSelected ? 1 : 0.64}
+                stroke={isSelected ? "#0f172a" : "transparent"}
+                strokeWidth={isSelected ? 2 : 0}
+                style={{ cursor: "default" }}
+                onMouseEnter={() => {
+                  if (typeof onSelectYear === "function") {
+                    onSelectYear(d.year);
+                  }
+                }}
+              />
+            </g>
           );
         })}
 

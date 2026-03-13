@@ -98,7 +98,7 @@ function computeYDomain(points) {
   const minValue = Math.min(...points.map((d) => d.value));
   const maxValue = Math.max(...points.map((d) => d.value));
   const padding = (maxValue - minValue) * 0.1;
-  return [minValue - padding, maxValue + padding];
+  return [Math.max(0, minValue - padding), maxValue + padding];
 }
 
 export default function TimeSeriesPanel({
@@ -190,7 +190,7 @@ export default function TimeSeriesPanel({
   if (Number.isFinite(effectiveStart)) {
     effectiveEnd = nearestYear(series, effectiveStart + rangeWidthYears);
   }
-  const point = getPointAtYear(series, effectiveEnd);
+  const point = getPointAtYear(series, effectiveStart);
 
   const startValue = valueAtNearestYear(series, effectiveStart);
   const endValue = valueAtNearestYear(series, effectiveEnd);
@@ -263,6 +263,12 @@ export default function TimeSeriesPanel({
 
   const windowX1 = xScale(Math.min(effectiveStart, effectiveEnd));
   const windowX2 = xScale(Math.max(effectiveStart, effectiveEnd));
+  const rangeLabelY = padT + 2;
+  const rangeLabelCharWidth = isRightCompact ? 6.4 : 6;
+  const startLabelText = Number.isFinite(effectiveStart) ? String(effectiveStart) : "";
+  const endLabelText = Number.isFinite(effectiveEnd) ? String(effectiveEnd) : "";
+  const startLabelX = Math.max(windowX1, padL + startLabelText.length * rangeLabelCharWidth);
+  const endLabelX = Math.min(windowX2, width - padR - endLabelText.length * rangeLabelCharWidth);
 
   if (isRightCompact) {
     return (
@@ -342,10 +348,22 @@ export default function TimeSeriesPanel({
             <text x={padL - 6} y={height - padB + 4} textAnchor="end" className="dashTickText">
               {valueFormatter ? valueFormatter(yMin) : yMin.toFixed(2)}
             </text>
-            <text x={xScale(effectiveStart)} y={height - 18} textAnchor="middle" className="dashRangeText">
+            <text
+              x={startLabelX}
+              y={rangeLabelY}
+              textAnchor="end"
+              dominantBaseline="text-after-edge"
+              className="dashRangeText"
+            >
               {effectiveStart}
             </text>
-            <text x={xScale(effectiveEnd)} y={height - 18} textAnchor="middle" className="dashRangeText">
+            <text
+              x={endLabelX}
+              y={rangeLabelY}
+              textAnchor="start"
+              dominantBaseline="text-after-edge"
+              className="dashRangeText"
+            >
               {effectiveEnd}
             </text>
 
@@ -443,10 +461,22 @@ export default function TimeSeriesPanel({
           {valueFormatter ? valueFormatter(yMin) : yMin.toFixed(2)}
         </text>
 
-        <text x={xScale(effectiveStart)} y={height - 12} textAnchor="middle" className="dashRangeText">
+        <text
+          x={startLabelX}
+          y={rangeLabelY}
+          textAnchor="end"
+          dominantBaseline="text-after-edge"
+          className="dashRangeText"
+        >
           {effectiveStart}
         </text>
-        <text x={xScale(effectiveEnd)} y={height - 12} textAnchor="middle" className="dashRangeText">
+        <text
+          x={endLabelX}
+          y={rangeLabelY}
+          textAnchor="start"
+          dominantBaseline="text-after-edge"
+          className="dashRangeText"
+        >
           {effectiveEnd}
         </text>
 
